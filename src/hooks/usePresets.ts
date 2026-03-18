@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Preset, SubjectEntry, generateId } from '@/lib/types';
+import { Preset, SubjectEntry, DistributionLevel, generateId } from '@/lib/types';
 import { loadPresets, savePresets } from '@/lib/storage';
+
+interface SavePresetOptions {
+  name: string;
+  subjects: SubjectEntry[];
+  numDays: number;
+  dayLevels: DistributionLevel[];
+}
 
 export function usePresets() {
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -12,11 +19,13 @@ export function usePresets() {
   }, []);
 
   const addPreset = useCallback(
-    (name: string, subjects: SubjectEntry[]) => {
+    (opts: SavePresetOptions) => {
       const newPreset: Preset = {
         id: generateId(),
-        name,
-        subjects: subjects.map((s) => ({ ...s, id: generateId() })),
+        name: opts.name,
+        subjects: opts.subjects.map((s) => ({ ...s, id: generateId() })),
+        numDays: opts.numDays,
+        dayLevels: opts.dayLevels,
       };
       const updated = [...presets, newPreset];
       setPresets(updated);
@@ -26,10 +35,15 @@ export function usePresets() {
   );
 
   const updatePreset = useCallback(
-    (id: string, subjects: SubjectEntry[]) => {
+    (id: string, opts: SavePresetOptions) => {
       const updated = presets.map((p) =>
         p.id === id
-          ? { ...p, subjects: subjects.map((s) => ({ ...s, id: generateId() })) }
+          ? {
+              ...p,
+              subjects: opts.subjects.map((s) => ({ ...s, id: generateId() })),
+              numDays: opts.numDays,
+              dayLevels: opts.dayLevels,
+            }
           : p
       );
       setPresets(updated);
@@ -47,5 +61,9 @@ export function usePresets() {
     [presets]
   );
 
-  return { presets, addPreset, updatePreset, deletePreset };
+  const reload = useCallback(() => {
+    setPresets(loadPresets());
+  }, []);
+
+  return { presets, addPreset, updatePreset, deletePreset, reload };
 }

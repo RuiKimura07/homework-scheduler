@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Preset, SubjectEntry } from '@/lib/types';
+import { Preset } from '@/lib/types';
 
 interface Props {
   presets: Preset[];
-  onLoad: (subjects: SubjectEntry[], name: string) => void;
+  onLoad: (preset: Preset) => void;
   onSave: (name: string) => void;
   onUpdate: (id: string) => void;
   onDelete: (id: string) => void;
@@ -78,6 +78,7 @@ export default function PresetPanel({
                     </div>
                     <div className="text-[10px] text-gray-400 mt-0.5">
                       {preset.subjects.map((s) => s.subject).join('・')}
+                      {preset.numDays && <span className="ml-1">({preset.numDays}日間)</span>}
                     </div>
                   </button>
                   <div className="flex gap-1 ml-2 shrink-0">
@@ -153,7 +154,7 @@ export default function PresetPanel({
               </button>
               <button
                 onClick={() => {
-                  onLoad(confirmPreset.subjects, confirmPreset.name);
+                  onLoad(confirmPreset);
                   setConfirmPreset(null);
                   setIsOpen(false);
                 }}

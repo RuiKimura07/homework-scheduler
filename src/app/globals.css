@@ -17,6 +17,25 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Scroll hint fade on right edge */
+.scroll-hint {
+  position: relative;
+}
+.scroll-hint::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to right, transparent, #f9fafb);
+  pointer-events: none;
+  z-index: 1;
+}
+.scroll-hint-card::after {
+  background: linear-gradient(to right, transparent, white);
+}
+
 /* ========== Print styles ========== */
 @media print {
   body {
@@ -32,5 +51,9 @@ input[type="number"] {
   * {
     box-shadow: none !important;
     overflow: visible !important;
+  }
+
+  .scroll-hint::after {
+    display: none;
   }
 }

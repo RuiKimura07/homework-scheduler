@@ -43,6 +43,20 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
     );
   };
 
+  const moveUp = (idx: number) => {
+    if (idx <= 0) return;
+    const arr = [...subjects];
+    [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+    onChange(arr);
+  };
+
+  const moveDown = (idx: number) => {
+    if (idx >= subjects.length - 1) return;
+    const arr = [...subjects];
+    [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+    onChange(arr);
+  };
+
   const inputBase = 'rounded-md border bg-white text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-colors';
 
   return (
@@ -57,7 +71,22 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
           <div key={entry.id} className="rounded-lg border border-gray-150 bg-gray-50/60 p-3">
             {/* Row 1: subject + material + delete */}
             <div className="flex items-center gap-2 mb-2.5">
-              <span className="text-[11px] font-semibold text-gray-400 w-4 shrink-0 text-center">{idx + 1}</span>
+              <div className="flex flex-col shrink-0 w-4">
+                <button
+                  onClick={() => moveUp(idx)}
+                  disabled={idx === 0}
+                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                >
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 5l4-4 4 4"/></svg>
+                </button>
+                <button
+                  onClick={() => moveDown(idx)}
+                  disabled={idx === subjects.length - 1}
+                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                >
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 1l4 4 4-4"/></svg>
+                </button>
+              </div>
               <input
                 type="text"
                 placeholder="科目"

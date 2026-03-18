@@ -12,17 +12,10 @@ interface Props {
   onChange: (days: DayDistribution[]) => void;
 }
 
-const levelInactive: Record<DistributionLevel, string> = {
-  '多め': 'text-red-400 border-gray-200 hover:bg-red-50 hover:border-red-200',
-  '均等': 'text-blue-400 border-gray-200 hover:bg-blue-50 hover:border-blue-200',
-  '少なめ': 'text-green-400 border-gray-200 hover:bg-green-50 hover:border-green-200',
-  '無し': 'text-gray-400 border-gray-200 hover:bg-gray-100',
-};
-
 const levelActive: Record<DistributionLevel, string> = {
-  '多め': 'bg-red-500 text-white border-red-500 shadow-sm shadow-red-200',
-  '均等': 'bg-blue-500 text-white border-blue-500 shadow-sm shadow-blue-200',
-  '少なめ': 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200',
+  '多め': 'bg-red-500 text-white border-red-500',
+  '均等': 'bg-blue-500 text-white border-blue-500',
+  '少なめ': 'bg-emerald-500 text-white border-emerald-500',
   '無し': 'bg-gray-400 text-white border-gray-400',
 };
 
@@ -37,7 +30,7 @@ export default function DayConfig({ days, onChange }: Props) {
   return (
     <div className="space-y-1">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-1 px-0.5">
+      <div className="flex items-center gap-2 mb-0.5">
         <span className="w-[76px] shrink-0" />
         <div className="flex flex-1 gap-1.5">
           {DISTRIBUTION_LEVELS.map((level) => (
@@ -53,19 +46,22 @@ export default function DayConfig({ days, onChange }: Props) {
             {formatDate(day.date)}
           </span>
           <div className="flex flex-1 gap-1.5">
-            {DISTRIBUTION_LEVELS.map((level) => (
-              <button
-                key={level}
-                onClick={() => setLevel(i, level)}
-                className={`flex-1 rounded-md border py-2.5 text-[11px] font-bold transition-all ${
-                  day.level === level
-                    ? levelActive[level]
-                    : levelInactive[level] + ' bg-white'
-                }`}
-              >
-                {day.level === level ? level : ''}
-              </button>
-            ))}
+            {DISTRIBUTION_LEVELS.map((level) => {
+              const isActive = day.level === level;
+              return (
+                <button
+                  key={level}
+                  onClick={() => setLevel(i, level)}
+                  className={`flex-1 rounded-md border py-2.5 text-[11px] font-bold transition-all ${
+                    isActive
+                      ? levelActive[level]
+                      : 'bg-gray-50 border-gray-100 text-gray-200 hover:bg-gray-100 hover:text-gray-400'
+                  }`}
+                >
+                  {isActive ? level : '\u00B7'}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}

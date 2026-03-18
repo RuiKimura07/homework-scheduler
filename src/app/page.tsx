@@ -6,6 +6,7 @@ import {
   DayDistribution,
   ScheduleResult,
   ScheduleHistory,
+  Preset,
   generateId,
   formatDate,
 } from '@/lib/types';
@@ -70,8 +71,11 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [showDataMenu, setShowDataMenu] = useState(false);
   const [importMsg, setImportMsg] = useState('');
+  const [nextLessonDate, setNextLessonDate] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
+  const [customDays, setCustomDays] = useState('');
 
-  const { presets, addPreset, updatePreset, deletePreset } = usePresets();
+  const { presets, addPreset, updatePreset, deletePreset, reload: reloadPresets } = usePresets();
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -136,20 +140,28 @@ export default function Home() {
     setEditedAmounts({});
   };
 
-  const handleLoadPreset = (presetSubjects: SubjectEntry[], name: string) => {
+  const handleLoadPreset = (preset: Preset) => {
     setSubjects(
-      presetSubjects.map((s) => ({ ...s, id: generateId() }))
+      preset.subjects.map((s) => ({ ...s, id: generateId() }))
     );
-    setStudentName(name);
+    setStudentName(preset.name);
+    if (preset.numDays) {
+      setNumDays(preset.numDays);
+      const newDays = getDays(startDate, preset.numDays);
+      setDays(newDays.map((d, i) => ({
+        ...d,
+        level: preset.dayLevels?.[i] ?? '均等',
+      })));
+    }
     setShowErrors(false);
   };
 
   const handleSavePreset = (name: string) => {
-    addPreset(name, subjects);
+    addPreset({ name, subjects, numDays, dayLevels: days.map((d) => d.level) });
   };
 
   const handleUpdatePreset = (id: string) => {
-    updatePreset(id, subjects);
+    updatePreset(id, { name: studentName || 'プリセット', subjects, numDays, dayLevels: days.map((d) => d.level) });
   };
 
   const handleDeleteHistory = (id: string) => {
@@ -201,6 +213,7 @@ export default function Home() {
         try {
           const result = importData(reader.result as string);
           setHistory(loadHistory());
+          reloadPresets();
           setImportMsg(`復元完了（プリセット${result.presets}件・履歴${result.history}件）`);
           setTimeout(() => setImportMsg(''), 3000);
         } catch {
@@ -269,11 +282,25 @@ export default function Home() {
       {showHistory && (
         <div className="mb-4 print:hidden">
           <Section title="作成履歴">
+            {history.length > 0 && (
+              <input
+                type="text"
+                placeholder="生徒名・科目で検索..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm mb-3 focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            )}
             {history.length === 0 ? (
               <p className="text-xs text-gray-400 py-2 text-center">履歴がありません</p>
             ) : (
               <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                {history.map((h) => {
+                {history.filter((h) => {
+                  if (!historySearch.trim()) return true;
+                  const q = historySearch.toLowerCase();
+                  return h.studentName.toLowerCase().includes(q) ||
+                    h.subjects.some((s) => s.subject.toLowerCase().includes(q) || s.material.toLowerCase().includes(q));
+                }).map((h) => {
                   const d = new Date(h.createdAt);
                   const dateLabel = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
                   return (
@@ -381,9 +408,9 @@ export default function Home() {
                 {NUM_DAYS_OPTIONS.map((n) => (
                   <button
                     key={n}
-                    onClick={() => handleNumDaysChange(n)}
+                    onClick={() => { handleNumDaysChange(n); setCustomDays(''); }}
                     className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
-                      numDays === n
+                      numDays === n && !customDays
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
                     }`}
@@ -391,6 +418,24 @@ export default function Home() {
                     {n}日
                   </button>
                 ))}
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  placeholder="他"
+                  value={customDays}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCustomDays(v);
+                    const n = parseInt(v);
+                    if (n > 0 && n <= 31) handleNumDaysChange(n);
+                  }}
+                  className={`w-[48px] shrink-0 rounded-lg border px-1.5 py-2 text-xs text-center font-medium transition-colors focus:outline-none ${
+                    customDays
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-500'
+                  }`}
+                />
               </div>
             </div>
           </div>
@@ -435,6 +480,8 @@ export default function Home() {
               editedAmounts={editedAmounts}
               comment={comment}
               onCommentChange={setComment}
+              nextLessonDate={nextLessonDate}
+              onNextLessonDateChange={setNextLessonDate}
             />
           </Section>
         )}
@@ -448,6 +495,7 @@ export default function Home() {
             studentName={studentName}
             editedAmounts={editedAmounts}
             comment={comment}
+            nextLessonDate={nextLessonDate}
           />
         </div>
       )}

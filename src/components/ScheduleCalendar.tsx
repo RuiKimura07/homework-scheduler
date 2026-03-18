@@ -82,7 +82,7 @@ export default function ScheduleCalendar({
       )}
 
       {/* Schedule table */}
-      <div className="rounded-lg border border-gray-200 overflow-x-auto -mx-4 px-4" style={{ scrollbarWidth: 'thin' }}>
+      <div className="rounded-lg border border-gray-200 overflow-x-auto -mx-4 px-4 scroll-hint scroll-hint-card" style={{ scrollbarWidth: 'thin' }}>
         <table className="w-full min-w-max text-[13px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">

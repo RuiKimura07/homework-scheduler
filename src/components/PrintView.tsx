@@ -9,9 +9,11 @@ interface Props {
   editedAmounts: Record<string, Record<number, number>>;
   comment: string;
   onCommentChange?: (value: string) => void;
+  nextLessonDate: string;
+  onNextLessonDateChange?: (value: string) => void;
 }
 
-export default function PrintView({ result, studentName, editedAmounts, comment, onCommentChange }: Props) {
+export default function PrintView({ result, studentName, editedAmounts, comment, onCommentChange, nextLessonDate, onNextLessonDateChange }: Props) {
   const { days, subjects } = result;
   const [showPreview, setShowPreview] = useState(false);
 
@@ -38,6 +40,7 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, color: '#555' }}>
           {studentName && <span>生徒名: {studentName}</span>}
           <span>作成日: {dateStr}</span>
+          {nextLessonDate && <span style={{ fontWeight: 600, color: '#111' }}>次回授業: {(() => { const d = new Date(nextLessonDate + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; })()}</span>}
         </div>
       </div>
 
@@ -132,6 +135,19 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
 
   return (
     <div>
+      {/* Next lesson date input (screen only) */}
+      {onNextLessonDateChange && (
+        <div className="space-y-1.5 mb-4 print:hidden">
+          <label className="block text-xs font-medium text-gray-500">次回授業日</label>
+          <input
+            type="date"
+            value={nextLessonDate}
+            onChange={(e) => onNextLessonDateChange(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none"
+          />
+        </div>
+      )}
+
       {/* Comment input (screen only) */}
       {onCommentChange && (
         <div className="space-y-1.5 mb-4 print:hidden">

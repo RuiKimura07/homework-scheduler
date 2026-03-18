@@ -53,6 +53,8 @@ export interface Preset {
   id: string;
   name: string;
   subjects: SubjectEntry[];
+  numDays?: number;
+  dayLevels?: DistributionLevel[];
 }
 
 export interface ScheduleHistory {
