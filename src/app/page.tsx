@@ -253,17 +253,13 @@ export default function Home() {
             </button>
             <button
               onClick={() => { setShowDataMenu(!showDataMenu); setShowHistory(false); }}
-              className={`rounded-lg border px-2 py-2 text-xs transition-colors ${
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                 showDataMenu
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}
-              title="データ管理"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <circle cx="8" cy="8" r="6" />
-                <path d="M8 5v3l2 1.5" />
-              </svg>
+              データ管理
             </button>
           </div>
         </div>
