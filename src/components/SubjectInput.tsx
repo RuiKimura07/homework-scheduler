@@ -43,25 +43,28 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
     );
   };
 
+  const inputBase = 'rounded-md border bg-white text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-colors';
+
   return (
-    <div className="space-y-3">
-      {subjects.map((entry) => {
+    <div className="space-y-2.5">
+      {subjects.map((entry, idx) => {
         const missingSubject = showErrors && !entry.subject.trim();
         const missingAmount = showErrors && entry.subject.trim() && entry.inputMode === 'amount' && !entry.amount;
         const missingRange = showErrors && entry.subject.trim() && entry.inputMode === 'range' && (!entry.rangeStart || !entry.rangeEnd);
         const isRange = entry.inputMode === 'range';
 
         return (
-          <div key={entry.id} className="rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 space-y-2">
-            {/* Row 1: subject, material, delete */}
-            <div className="flex items-center gap-1.5">
+          <div key={entry.id} className="rounded-lg border border-gray-150 bg-gray-50/60 p-3">
+            {/* Row 1: subject + material + delete */}
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[11px] font-semibold text-gray-400 w-4 shrink-0 text-center">{idx + 1}</span>
               <input
                 type="text"
                 placeholder="科目"
                 value={entry.subject}
                 onChange={(e) => updateField(entry.id, 'subject', e.target.value)}
-                className={`w-[68px] shrink-0 rounded-lg border bg-white px-2 py-2 text-sm focus:border-blue-500 focus:outline-none ${
-                  missingSubject ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                className={`w-[72px] shrink-0 ${inputBase} px-2.5 py-2 font-medium ${
+                  missingSubject ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                 }`}
               />
               <input
@@ -69,95 +72,107 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
                 placeholder="教材名"
                 value={entry.material}
                 onChange={(e) => updateField(entry.id, 'material', e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={`min-w-0 flex-1 ${inputBase} px-2.5 py-2 border-gray-200`}
               />
               <button
                 onClick={() => removeRow(entry.id)}
                 disabled={subjects.length <= 1}
-                className="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-30"
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-gray-350 hover:bg-red-50 hover:text-red-500 disabled:opacity-20 transition-colors"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="4" y1="4" x2="12" y2="12" />
-                  <line x1="12" y1="4" x2="4" y2="12" />
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="3.5" y1="3.5" x2="10.5" y2="10.5" />
+                  <line x1="10.5" y1="3.5" x2="3.5" y2="10.5" />
                 </svg>
               </button>
             </div>
 
-            {/* Row 2: mode toggle + amount/range inputs */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => toggleMode(entry.id)}
-                className={`shrink-0 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors ${
-                  isRange
-                    ? 'border-purple-300 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 bg-white text-gray-500'
-                }`}
-              >
-                {isRange ? '範囲' : '量'}
-              </button>
+            {/* Row 2: mode tabs + inputs - aligned with row 1 */}
+            <div className="flex items-center gap-2 pl-6">
+              <div className="shrink-0 flex rounded-md border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => !isRange ? null : toggleMode(entry.id)}
+                  className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+                    !isRange
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  量
+                </button>
+                <button
+                  onClick={() => isRange ? null : toggleMode(entry.id)}
+                  className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors border-l border-gray-200 ${
+                    isRange
+                      ? 'bg-violet-500 text-white'
+                      : 'bg-white text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  範囲
+                </button>
+              </div>
 
               {isRange ? (
-                <>
-                  <span className="text-xs text-gray-400 shrink-0">No.</span>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <span className="text-[11px] font-medium text-gray-400 shrink-0">No.</span>
                   <input
                     type="number"
                     min={1}
                     placeholder="開始"
                     value={entry.rangeStart || ''}
                     onChange={(e) => updateField(entry.id, 'rangeStart', parseInt(e.target.value) || 0)}
-                    className={`w-[56px] shrink-0 rounded-lg border bg-white px-2 py-1.5 text-sm text-right focus:border-blue-500 focus:outline-none ${
-                      missingRange ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                    className={`w-[52px] shrink-0 ${inputBase} px-2 py-1.5 text-right ${
+                      missingRange ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                     }`}
                   />
-                  <span className="text-xs text-gray-400 shrink-0">~</span>
+                  <span className="text-gray-300 shrink-0">~</span>
                   <input
                     type="number"
                     min={1}
                     placeholder="終了"
                     value={entry.rangeEnd || ''}
                     onChange={(e) => updateField(entry.id, 'rangeEnd', parseInt(e.target.value) || 0)}
-                    className={`w-[56px] shrink-0 rounded-lg border bg-white px-2 py-1.5 text-sm text-right focus:border-blue-500 focus:outline-none ${
-                      missingRange ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                    className={`w-[52px] shrink-0 ${inputBase} px-2 py-1.5 text-right ${
+                      missingRange ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                     }`}
                   />
-                  <span className="text-xs text-gray-400 shrink-0">
-                    ({entry.rangeEnd && entry.rangeStart ? Math.max(0, entry.rangeEnd - entry.rangeStart + 1) : 0}問)
+                  <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
+                    = {entry.rangeEnd && entry.rangeStart ? Math.max(0, entry.rangeEnd - entry.rangeStart + 1) : 0}問
                   </span>
-                </>
+                </div>
               ) : (
-                <>
+                <div className="flex items-center gap-1.5">
                   <input
                     type="number"
                     min={0}
                     value={entry.amount || ''}
                     onChange={(e) => updateField(entry.id, 'amount', parseInt(e.target.value) || 0)}
-                    className={`w-[56px] shrink-0 rounded-lg border bg-white px-2 py-1.5 text-sm text-right focus:border-blue-500 focus:outline-none ${
-                      missingAmount ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                    className={`w-[60px] shrink-0 ${inputBase} px-2.5 py-1.5 text-right ${
+                      missingAmount ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                     }`}
                   />
                   <select
                     value={entry.unit}
                     onChange={(e) => updateField(entry.id, 'unit', e.target.value as Unit)}
-                    className="w-[68px] shrink-0 rounded-lg border border-gray-200 bg-white px-1 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                    className={`w-[72px] shrink-0 ${inputBase} px-2 py-1.5 border-gray-200`}
                   >
                     {UNITS.map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                </>
+                </div>
               )}
             </div>
           </div>
         );
       })}
       {showErrors && (
-        <p className="text-xs text-red-500">科目名と量（または範囲）を入力してください</p>
+        <p className="text-[11px] text-red-500 pl-1">科目名と量（または範囲）を入力してください</p>
       )}
       <button
         onClick={addRow}
-        className="w-full rounded-lg border-2 border-dashed border-gray-200 py-2.5 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+        className="w-full rounded-lg border-2 border-dashed border-gray-200 py-3 text-[13px] font-medium text-gray-400 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30 transition-colors"
       >
-        + 追加
+        + 科目を追加
       </button>
     </div>
   );

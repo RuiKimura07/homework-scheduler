@@ -38,12 +38,12 @@ function getDays(startDateStr: string, numDays: number): DayDistribution[] {
 
 function Section({ title, children, rightAction }: { title: string; children: React.ReactNode; rightAction?: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-800">{title}</h2>
+    <section className="rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-100">
+      <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+        <h2 className="text-[13px] font-bold text-gray-700 tracking-tight">{title}</h2>
         {rightAction}
       </div>
-      <div className="px-4 py-3">{children}</div>
+      <div className="px-4 py-4">{children}</div>
     </section>
   );
 }
