@@ -11,7 +11,7 @@ import {
 } from '@/lib/types';
 import { calculateSchedule } from '@/lib/scheduler';
 import { usePresets } from '@/hooks/usePresets';
-import { addHistory, loadHistory, deleteHistory } from '@/lib/storage';
+import { addHistory, loadHistory, deleteHistory, exportData, importData } from '@/lib/storage';
 import SubjectInput from '@/components/SubjectInput';
 import DateSetting from '@/components/DateSetting';
 import DayConfig from '@/components/DayConfig';
@@ -68,6 +68,8 @@ export default function Home() {
   const [showErrors, setShowErrors] = useState(false);
   const [history, setHistory] = useState<ScheduleHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDataMenu, setShowDataMenu] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
 
   const { presets, addPreset, updatePreset, deletePreset } = usePresets();
 
@@ -176,6 +178,41 @@ export default function Home() {
     setShowErrors(false);
   };
 
+  const handleExport = () => {
+    const json = exportData();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `homework-scheduler-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = importData(reader.result as string);
+          setHistory(loadHistory());
+          setImportMsg(`復元完了（プリセット${result.presets}件・履歴${result.history}件）`);
+          setTimeout(() => setImportMsg(''), 3000);
+        } catch {
+          setImportMsg('エラー: データの読み込みに失敗しました');
+          setTimeout(() => setImportMsg(''), 3000);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   const validSubjectCount = subjects.filter(
     (s) =>
       s.subject.trim() &&
@@ -203,17 +240,32 @@ export default function Home() {
               <p className="text-[11px] text-gray-400">宿題配分を作成・印刷</p>
             </div>
           </div>
-          {/* History button */}
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-              showHistory
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-            }`}
-          >
-            履歴
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => { setShowHistory(!showHistory); setShowDataMenu(false); }}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                showHistory
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              履歴
+            </button>
+            <button
+              onClick={() => { setShowDataMenu(!showDataMenu); setShowHistory(false); }}
+              className={`rounded-lg border px-2 py-2 text-xs transition-colors ${
+                showDataMenu
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+              title="データ管理"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <circle cx="8" cy="8" r="6" />
+                <path d="M8 5v3l2 1.5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -254,6 +306,44 @@ export default function Home() {
                   );
                 })}
               </div>
+            )}
+          </Section>
+        </div>
+      )}
+
+      {/* Data management panel */}
+      {showDataMenu && (
+        <div className="mb-4 print:hidden">
+          <Section title="データ管理">
+            <p className="text-[11px] text-gray-400 mb-3">
+              プリセットと履歴をファイルに保存・復元できます。再インストール時のデータ引き継ぎに使えます。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExport}
+                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-100 flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M2 10v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" />
+                  <path d="M8 2v8M5 7l3 3 3-3" />
+                </svg>
+                バックアップ保存
+              </button>
+              <button
+                onClick={handleImport}
+                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-100 flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M2 10v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" />
+                  <path d="M8 10V2M5 5l3-3 3 3" />
+                </svg>
+                バックアップ復元
+              </button>
+            </div>
+            {importMsg && (
+              <p className={`mt-2 text-[11px] font-medium text-center ${importMsg.startsWith('エラー') ? 'text-red-500' : 'text-green-600'}`}>
+                {importMsg}
+              </p>
             )}
           </Section>
         </div>

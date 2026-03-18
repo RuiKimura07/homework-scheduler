@@ -75,3 +75,32 @@ export function deleteHistory(id: string): void {
   const history = loadHistory().filter((h) => h.id !== id);
   saveHistory(history);
 }
+
+// === Export / Import ===
+
+interface ExportData {
+  version: 1;
+  exportedAt: string;
+  presets: Preset[];
+  history: ScheduleHistory[];
+}
+
+export function exportData(): string {
+  const data: ExportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    presets: loadPresets(),
+    history: loadHistory(),
+  };
+  return JSON.stringify(data, null, 2);
+}
+
+export function importData(json: string): { presets: number; history: number } {
+  const data: ExportData = JSON.parse(json);
+  if (!data.version || !data.presets || !data.history) {
+    throw new Error('無効なデータ形式です');
+  }
+  savePresets(data.presets);
+  saveHistory(data.history);
+  return { presets: data.presets.length, history: data.history.length };
+}
