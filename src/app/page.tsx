@@ -55,7 +55,7 @@ export default function Home() {
   const [startDate, setStartDate] = useState(getDefaultDate);
   const [numDays, setNumDays] = useState(7);
   const [subjects, setSubjects] = useState<SubjectEntry[]>([
-    { id: generateId(), subject: '', material: '', amount: 0, unit: 'ページ' },
+    { id: generateId(), subject: '', material: '', amount: 0, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
   ]);
   const [days, setDays] = useState<DayDistribution[]>(() =>
     getDays(getDefaultDate(), 7)
@@ -99,7 +99,11 @@ export default function Home() {
 
   const handleGenerate = () => {
     const validSubjects = subjects.filter(
-      (s) => s.subject.trim() && s.amount > 0
+      (s) =>
+        s.subject.trim() &&
+        (s.inputMode === 'range'
+          ? s.rangeStart > 0 && s.rangeEnd >= s.rangeStart
+          : s.amount > 0)
     );
     if (validSubjects.length === 0) {
       setShowErrors(true);
@@ -173,7 +177,11 @@ export default function Home() {
   };
 
   const validSubjectCount = subjects.filter(
-    (s) => s.subject.trim() && s.amount > 0
+    (s) =>
+      s.subject.trim() &&
+      (s.inputMode === 'range'
+        ? s.rangeStart > 0 && s.rangeEnd >= s.rangeStart
+        : s.amount > 0)
   ).length;
 
   return (

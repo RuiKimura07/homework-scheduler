@@ -13,12 +13,17 @@ export const DISTRIBUTION_WEIGHTS: Record<DistributionLevel, number> = {
   '無し': 0,
 };
 
+export type InputMode = 'amount' | 'range';
+
 export interface SubjectEntry {
   id: string;
   subject: string;
   material: string;
   amount: number;
   unit: Unit;
+  inputMode: InputMode;
+  rangeStart: number;
+  rangeEnd: number;
 }
 
 export interface DayDistribution {
@@ -40,6 +45,8 @@ export interface DaySchedule {
 export interface Assignment {
   subjectId: string;
   amount: number;
+  rangeStart?: number;
+  rangeEnd?: number;
 }
 
 export interface Preset {

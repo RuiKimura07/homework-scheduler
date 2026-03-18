@@ -21,12 +21,33 @@ export function calculateSchedule(
   }));
 
   for (const subject of subjects) {
-    const assignments = distributeAmount(subject.amount, weights, totalWeight);
-    for (let i = 0; i < days.length; i++) {
-      daySchedules[i].assignments.push({
-        subjectId: subject.id,
-        amount: assignments[i],
-      });
+    const totalAmount =
+      subject.inputMode === 'range'
+        ? subject.rangeEnd - subject.rangeStart + 1
+        : subject.amount;
+
+    const amounts = distributeAmount(totalAmount, weights, totalWeight);
+
+    if (subject.inputMode === 'range') {
+      // Convert amounts to ranges
+      let cursor = subject.rangeStart;
+      for (let i = 0; i < days.length; i++) {
+        const count = amounts[i];
+        daySchedules[i].assignments.push({
+          subjectId: subject.id,
+          amount: count,
+          rangeStart: count > 0 ? cursor : 0,
+          rangeEnd: count > 0 ? cursor + count - 1 : 0,
+        });
+        cursor += count;
+      }
+    } else {
+      for (let i = 0; i < days.length; i++) {
+        daySchedules[i].assignments.push({
+          subjectId: subject.id,
+          amount: amounts[i],
+        });
+      }
     }
   }
 
@@ -42,23 +63,17 @@ function distributeAmount(
     return weights.map(() => 0);
   }
 
-  // Calculate raw (float) distribution
   const raw = weights.map((w) => (total * w) / totalWeight);
-
-  // Floor each value
   const floored = raw.map((v) => Math.floor(v));
   let remainder = total - floored.reduce((sum, v) => sum + v, 0);
 
-  // Get fractional parts with indices
   const fractions = raw.map((v, i) => ({
     index: i,
     fraction: v - Math.floor(v),
   }));
 
-  // Sort by fractional part descending
   fractions.sort((a, b) => b.fraction - a.fraction);
 
-  // Distribute remainder to days with largest fractional parts
   for (let i = 0; i < remainder; i++) {
     floored[fractions[i].index] += 1;
   }

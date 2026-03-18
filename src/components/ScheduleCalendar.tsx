@@ -59,9 +59,10 @@ export default function ScheduleCalendar({
 
   const hasEdits = Object.keys(editedAmounts).length > 0;
 
-  const allMatch = subjects.every(
-    (s) => getSubjectTotal(s.id) === s.amount
-  );
+  const allMatch = subjects.every((s) => {
+    const orig = s.inputMode === 'range' ? s.rangeEnd - s.rangeStart + 1 : s.amount;
+    return getSubjectTotal(s.id) === orig;
+  });
 
   return (
     <div className="space-y-3">
@@ -109,20 +110,33 @@ export default function ScheduleCalendar({
                 </td>
                 {subjects.map((subject) => {
                   const amount = getAmount(subject.id, dayIdx);
+                  const assignment = days[dayIdx].assignments.find((a) => a.subjectId === subject.id);
+                  const isRange = subject.inputMode === 'range';
+                  const hasEditsForThis = editedAmounts[subject.id]?.[dayIdx] !== undefined;
+
                   return (
                     <td key={subject.id} className="px-2 py-1.5 text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <input
-                          type="number"
-                          min={0}
-                          value={amount || ''}
-                          onChange={(e) =>
-                            setAmount(subject.id, dayIdx, parseInt(e.target.value) || 0)
-                          }
-                          className="w-12 rounded border border-gray-200 bg-white px-1 py-1 text-sm text-right focus:border-blue-400 focus:outline-none"
-                        />
-                        <span className="text-[10px] text-gray-400">{subject.unit}</span>
-                      </div>
+                      {isRange && !hasEditsForThis && assignment?.rangeStart ? (
+                        <div className="text-sm font-medium text-gray-800">
+                          {assignment.rangeStart === assignment.rangeEnd
+                            ? `No.${assignment.rangeStart}`
+                            : `No.${assignment.rangeStart}~${assignment.rangeEnd}`}
+                          <div className="text-[10px] text-gray-400">({amount}問)</div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <input
+                            type="number"
+                            min={0}
+                            value={amount || ''}
+                            onChange={(e) =>
+                              setAmount(subject.id, dayIdx, parseInt(e.target.value) || 0)
+                            }
+                            className="w-12 rounded border border-gray-200 bg-white px-1 py-1 text-sm text-right focus:border-blue-400 focus:outline-none"
+                          />
+                          <span className="text-[10px] text-gray-400">{isRange ? '問' : subject.unit}</span>
+                        </div>
+                      )}
                     </td>
                   );
                 })}
@@ -141,7 +155,10 @@ export default function ScheduleCalendar({
           <tbody>
             {subjects.map((subject, idx) => {
               const total = getSubjectTotal(subject.id);
-              const diff = total - subject.amount;
+              const originalTotal = subject.inputMode === 'range'
+                ? subject.rangeEnd - subject.rangeStart + 1
+                : subject.amount;
+              const diff = total - originalTotal;
               return (
                 <tr key={subject.id} className={idx < subjects.length - 1 ? 'border-b border-gray-100' : ''}>
                   <td className="px-3 py-2 font-medium text-gray-700">
@@ -149,7 +166,7 @@ export default function ScheduleCalendar({
                     <span className="ml-1 text-xs text-gray-400">{subject.material}</span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-gray-500 text-xs">
-                    {total} / {subject.amount}
+                    {total} / {originalTotal}
                   </td>
                   <td className="px-3 py-2 text-right text-xs font-medium w-20">
                     {diff === 0 ? (

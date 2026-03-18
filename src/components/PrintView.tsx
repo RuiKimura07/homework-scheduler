@@ -20,6 +20,7 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
 
   // Dynamically inject @page orientation
   useEffect(() => {
+    if (!onCommentChange) return; // Only the interactive instance manages the style
     const id = 'print-orientation-style';
     let style = document.getElementById(id) as HTMLStyleElement | null;
     if (!style) {
@@ -27,9 +28,8 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
       style.id = id;
       document.head.appendChild(style);
     }
-    style.textContent = `@media print { @page { size: A4 ${orientation}; margin: 8mm; } }`;
-    return () => { if (style) style.textContent = ''; };
-  }, [orientation]);
+    style.textContent = `@media print { @page { size: ${orientation} !important; margin: 8mm !important; } }`;
+  }, [orientation, onCommentChange]);
 
   const getAmount = (subjectId: string, dayIndex: number): number => {
     if (editedAmounts[subjectId]?.[dayIndex] !== undefined) {
@@ -87,9 +87,21 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
                 </td>
                 {subjects.map((subject) => {
                   const amount = getAmount(subject.id, dayIdx);
+                  const assignment = days[dayIdx].assignments.find((a) => a.subjectId === subject.id);
+                  const isRange = subject.inputMode === 'range';
+                  let label = '-';
+                  if (amount > 0) {
+                    if (isRange && assignment?.rangeStart) {
+                      label = assignment.rangeStart === assignment.rangeEnd
+                        ? `No.${assignment.rangeStart}`
+                        : `No.${assignment.rangeStart}~${assignment.rangeEnd}`;
+                    } else {
+                      label = `${amount}${subject.unit}`;
+                    }
+                  }
                   return (
                     <td key={subject.id} style={{ border: '1px solid #999', padding: '4px 6px', textAlign: 'center', color: isOff && amount === 0 ? '#ccc' : '#111' }}>
-                      {amount > 0 ? `${amount}${subject.unit}` : '-'}
+                      {label}
                     </td>
                   );
                 })}
@@ -109,7 +121,9 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
               }
               return (
                 <td key={subject.id} style={{ border: '1px solid #999', padding: '4px 6px', textAlign: 'center' }}>
-                  {total}{subject.unit}
+                  {subject.inputMode === 'range'
+                    ? `No.${subject.rangeStart}~${subject.rangeEnd}`
+                    : `${total}${subject.unit}`}
                 </td>
               );
             })}
