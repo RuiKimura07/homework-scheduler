@@ -12,7 +12,7 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
   const addRow = () => {
     onChange([
       ...subjects,
-      { id: generateId(), subject: '', material: '', amount: 0, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+      { id: generateId(), subject: '', material: '', amount: 0, unit: '問', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
     ]);
   };
 

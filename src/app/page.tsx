@@ -56,7 +56,7 @@ export default function Home() {
   const [startDate, setStartDate] = useState(getDefaultDate);
   const [numDays, setNumDays] = useState(7);
   const [subjects, setSubjects] = useState<SubjectEntry[]>([
-    { id: generateId(), subject: '', material: '', amount: 0, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+    { id: generateId(), subject: '', material: '', amount: 0, unit: '問', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
   ]);
   const [days, setDays] = useState<DayDistribution[]>(() =>
     getDays(getDefaultDate(), 7)
