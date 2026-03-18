@@ -1,9 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ScheduleResult, formatDate, DistributionLevel } from '@/lib/types';
-
-type Orientation = 'landscape' | 'portrait';
+import { useState } from 'react';
+import { ScheduleResult, formatDate } from '@/lib/types';
 
 interface Props {
   result: ScheduleResult;
@@ -16,20 +14,6 @@ interface Props {
 export default function PrintView({ result, studentName, editedAmounts, comment, onCommentChange }: Props) {
   const { days, subjects } = result;
   const [showPreview, setShowPreview] = useState(false);
-  const [orientation, setOrientation] = useState<Orientation>('landscape');
-
-  // Dynamically inject @page orientation
-  useEffect(() => {
-    if (!onCommentChange) return; // Only the interactive instance manages the style
-    const id = 'print-orientation-style';
-    let style = document.getElementById(id) as HTMLStyleElement | null;
-    if (!style) {
-      style = document.createElement('style');
-      style.id = id;
-      document.head.appendChild(style);
-    }
-    style.textContent = `@media print { @page { size: ${orientation} !important; margin: 8mm !important; } }`;
-  }, [orientation, onCommentChange]);
 
   const getAmount = (subjectId: string, dayIndex: number): number => {
     if (editedAmounts[subjectId]?.[dayIndex] !== undefined) {
@@ -162,35 +146,6 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
         </div>
       )}
 
-      {/* Orientation toggle */}
-      {onCommentChange && (
-        <div className="flex gap-2 mb-3 print:hidden">
-          <label className="block text-xs font-medium text-gray-500 self-center shrink-0">用紙向き</label>
-          <div className="flex flex-1 gap-1">
-            <button
-              onClick={() => setOrientation('landscape')}
-              className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
-                orientation === 'landscape'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              A4 横
-            </button>
-            <button
-              onClick={() => setOrientation('portrait')}
-              className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
-                orientation === 'portrait'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              A4 縦
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Action buttons */}
       {onCommentChange && (
         <div className="flex gap-2 print:hidden">
@@ -225,12 +180,8 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
       {showPreview && onCommentChange && (
         <div className="mt-4 print:hidden">
           <div
-            className={`mx-auto border border-gray-300 bg-white shadow-sm overflow-auto ${
-              orientation === 'landscape'
-                ? 'max-w-full aspect-[297/210]'
-                : 'max-w-[320px] aspect-[210/297]'
-            }`}
-            style={{ padding: orientation === 'landscape' ? '12px 16px' : '16px 12px' }}
+            className="mx-auto border border-gray-300 bg-white shadow-sm overflow-auto max-w-full aspect-[297/210]"
+            style={{ padding: '12px 16px' }}
           >
             <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '142%' }}>
               {renderPrintContent(true)}
