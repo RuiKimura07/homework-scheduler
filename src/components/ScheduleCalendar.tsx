@@ -141,7 +141,7 @@ export default function ScheduleCalendar({
                             }
                             className="w-11 rounded-md border border-gray-200 bg-white px-1 py-1 text-[13px] text-right tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
                           />
-                          <span className="text-[9px] text-gray-400 w-4">{isRange ? '問' : subject.unit}</span>
+                          <span className="text-[9px] text-gray-400 whitespace-nowrap">{isRange ? '問' : subject.unit}</span>
                         </div>
                       )}
                     </td>
