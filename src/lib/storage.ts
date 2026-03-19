@@ -2,12 +2,42 @@ import { Preset, SubjectEntry, ScheduleHistory, generateId } from './types';
 
 const PRESETS_KEY = 'homework-scheduler-presets';
 const HISTORY_KEY = 'homework-scheduler-history';
+const SEEDED_KEY = 'homework-scheduler-seeded';
 const MAX_HISTORY = 30;
+
+// === Sample Preset ===
+
+function getSamplePreset(): Preset {
+  return {
+    id: generateId(),
+    name: '中学5教科サンプル',
+    subjects: [
+      { id: generateId(), subject: '英語', material: '教科書ワーク', amount: 10, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+      { id: generateId(), subject: '数学', material: '基本問題集', amount: 0, unit: '問', inputMode: 'range', rangeStart: 1, rangeEnd: 20 },
+      { id: generateId(), subject: '国語', material: '漢字ドリル', amount: 15, unit: '問', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+      { id: generateId(), subject: '理科', material: 'ワーク', amount: 8, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+      { id: generateId(), subject: '社会', material: 'ワーク', amount: 8, unit: 'ページ', inputMode: 'amount', rangeStart: 0, rangeEnd: 0 },
+    ],
+    numDays: 7,
+    dayLevels: ['均等', '均等', '均等', '均等', '均等', '少なめ', '少なめ'],
+  };
+}
+
+function seedSamplePreset(): void {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem(SEEDED_KEY)) return;
+  const existing = localStorage.getItem(PRESETS_KEY);
+  if (!existing || JSON.parse(existing).length === 0) {
+    savePresets([getSamplePreset()]);
+  }
+  localStorage.setItem(SEEDED_KEY, '1');
+}
 
 // === Presets ===
 
 export function loadPresets(): Preset[] {
   if (typeof window === 'undefined') return [];
+  seedSamplePreset();
   const data = localStorage.getItem(PRESETS_KEY);
   if (!data) return [];
   return JSON.parse(data);

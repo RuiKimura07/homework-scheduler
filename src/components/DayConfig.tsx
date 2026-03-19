@@ -55,10 +55,10 @@ export default function DayConfig({ days, onChange }: Props) {
                   className={`flex-1 rounded-md border py-2.5 text-[11px] font-bold transition-all ${
                     isActive
                       ? levelActive[level]
-                      : 'bg-gray-50 border-gray-100 text-gray-200 hover:bg-gray-100 hover:text-gray-400'
+                      : 'bg-gray-50 border-gray-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
                   }`}
                 >
-                  {isActive ? level : '\u00B7'}
+                  {level}
                 </button>
               );
             })}
