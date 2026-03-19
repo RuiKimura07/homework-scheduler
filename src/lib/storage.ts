@@ -4,6 +4,7 @@ const PRESETS_KEY = 'homework-scheduler-presets';
 const HISTORY_KEY = 'homework-scheduler-history';
 const SEEDED_KEY = 'homework-scheduler-seeded';
 const SUBJECT_MASTER_KEY = 'subject-master';
+const MATERIAL_SEEDED_KEY = 'homework-scheduler-material-seeded';
 const MAX_HISTORY = 30;
 
 export interface SubjectMasterEntry {
@@ -12,11 +13,11 @@ export interface SubjectMasterEntry {
 }
 
 const DEFAULT_SUBJECT_MASTER: SubjectMasterEntry[] = [
-  { name: '数学', materials: [] },
-  { name: '英語', materials: [] },
-  { name: '国語', materials: [] },
-  { name: '理科', materials: [] },
-  { name: '社会', materials: [] },
+  { name: '数学', materials: ['基本問題集', 'ワーク', '教科書'] },
+  { name: '英語', materials: ['教科書ワーク', 'ワーク', '教科書'] },
+  { name: '国語', materials: ['漢字ドリル', 'ワーク', '教科書'] },
+  { name: '理科', materials: ['ワーク', '教科書'] },
+  { name: '社会', materials: ['ワーク', '教科書'] },
 ];
 
 // === Sample Preset ===
@@ -97,7 +98,10 @@ function migrateSubjectMaster(raw: unknown): SubjectMasterEntry[] {
   if (raw.length === 0) return [];
   // Old format: string[]
   if (typeof raw[0] === 'string') {
-    return (raw as string[]).map((name) => ({ name, materials: [] }));
+    return (raw as string[]).map((name) => {
+      const defaults = DEFAULT_SUBJECT_MASTER.find((d) => d.name === name);
+      return { name, materials: defaults?.materials ?? [] };
+    });
   }
   // New format
   return raw as SubjectMasterEntry[];
@@ -111,9 +115,24 @@ export function loadSubjectMaster(): SubjectMasterEntry[] {
     return DEFAULT_SUBJECT_MASTER;
   }
   const parsed = JSON.parse(data);
-  const migrated = migrateSubjectMaster(parsed);
-  // Re-save if migrated from old format
-  if (typeof parsed[0] === 'string') {
+  let migrated = migrateSubjectMaster(parsed);
+  let needsSave = typeof parsed[0] === 'string';
+
+  // One-time: seed default materials for subjects that have none
+  if (!localStorage.getItem(MATERIAL_SEEDED_KEY)) {
+    for (const entry of migrated) {
+      if (entry.materials.length === 0) {
+        const defaults = DEFAULT_SUBJECT_MASTER.find((d) => d.name === entry.name);
+        if (defaults && defaults.materials.length > 0) {
+          entry.materials = [...defaults.materials];
+          needsSave = true;
+        }
+      }
+    }
+    localStorage.setItem(MATERIAL_SEEDED_KEY, '1');
+  }
+
+  if (needsSave) {
     saveSubjectMaster(migrated);
   }
   return migrated;
