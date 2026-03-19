@@ -37,6 +37,10 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
     onChange(subjects.map((s) => s.id === id ? { ...s, [field]: value } : s));
   };
 
+  const updateFields = (id: string, updates: Partial<SubjectEntry>) => {
+    onChange(subjects.map((s) => s.id === id ? { ...s, ...updates } : s));
+  };
+
   const toggleMode = (id: string) => {
     onChange(subjects.map((s) => {
       if (s.id !== id) return s;
@@ -63,20 +67,15 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
   const handleSubjectSelect = (id: string, value: string) => {
     if (value === '__other__') {
       setSubjectCustomModes((prev) => ({ ...prev, [id]: 'other' }));
-      updateField(id, 'subject', '');
-      updateField(id, 'material', '');
-      // Also reset material to custom since there's no master entry
+      updateFields(id, { subject: '', material: '' });
       setMaterialCustomModes((prev) => ({ ...prev, [id]: 'other' }));
     } else if (value === '__add_new__') {
       setSubjectCustomModes((prev) => ({ ...prev, [id]: 'addNew' }));
-      updateField(id, 'subject', '');
-      updateField(id, 'material', '');
+      updateFields(id, { subject: '', material: '' });
       setMaterialCustomModes((prev) => ({ ...prev, [id]: 'other' }));
     } else {
       setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
-      updateField(id, 'subject', value);
-      // Reset material when subject changes
-      updateField(id, 'material', '');
+      updateFields(id, { subject: value, material: '' });
       setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
     }
   };
@@ -90,8 +89,7 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
 
   const handleSubjectBackToSelect = (id: string) => {
     setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    updateField(id, 'subject', '');
-    updateField(id, 'material', '');
+    updateFields(id, { subject: '', material: '' });
     setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
   };
 
