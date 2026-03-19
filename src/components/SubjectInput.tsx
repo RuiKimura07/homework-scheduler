@@ -1,14 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import { SubjectEntry, Unit, UNITS, InputMode, generateId } from '@/lib/types';
 
 interface Props {
   subjects: SubjectEntry[];
   onChange: (subjects: SubjectEntry[]) => void;
   showErrors?: boolean;
+  subjectMaster: string[];
+  onAddToMaster: (name: string) => void;
 }
 
-export default function SubjectInput({ subjects, onChange, showErrors }: Props) {
+// Track which rows are in "custom input" mode (not selecting from dropdown)
+// Key: subject entry id, Value: 'other' (temporary) or 'addNew' (add to master)
+type CustomMode = 'other' | 'addNew';
+
+export default function SubjectInput({ subjects, onChange, showErrors, subjectMaster, onAddToMaster }: Props) {
+  const [customModes, setCustomModes] = useState<Record<string, CustomMode>>({});
+
   const addRow = () => {
     onChange([
       ...subjects,
@@ -19,6 +28,11 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
   const removeRow = (id: string) => {
     if (subjects.length <= 1) return;
     onChange(subjects.filter((s) => s.id !== id));
+    setCustomModes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const updateField = (
@@ -57,7 +71,48 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
     onChange(arr);
   };
 
+  const handleSelectChange = (id: string, value: string) => {
+    if (value === '__other__') {
+      setCustomModes((prev) => ({ ...prev, [id]: 'other' }));
+      updateField(id, 'subject', '');
+    } else if (value === '__add_new__') {
+      setCustomModes((prev) => ({ ...prev, [id]: 'addNew' }));
+      updateField(id, 'subject', '');
+    } else {
+      setCustomModes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      updateField(id, 'subject', value);
+    }
+  };
+
+  const handleCustomConfirm = (id: string, name: string) => {
+    const mode = customModes[id];
+    if (mode === 'addNew' && name.trim()) {
+      onAddToMaster(name.trim());
+    }
+    setCustomModes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const handleBackToSelect = (id: string) => {
+    setCustomModes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    updateField(id, 'subject', '');
+  };
+
   const inputBase = 'rounded-md border bg-white text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-colors';
+
+  // Check if subject master is empty (fallback to text input)
+  const hasMaster = subjectMaster.length > 0;
 
   return (
     <div className="space-y-2.5">
@@ -66,6 +121,10 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
         const missingAmount = showErrors && entry.subject.trim() && entry.inputMode === 'amount' && !entry.amount;
         const missingRange = showErrors && entry.subject.trim() && entry.inputMode === 'range' && (!entry.rangeStart || !entry.rangeEnd);
         const isRange = entry.inputMode === 'range';
+        const customMode = customModes[entry.id];
+        const isCustom = !!customMode;
+        // If the current subject is not in the master and not empty, show as custom
+        const subjectNotInMaster = entry.subject.trim() && !subjectMaster.includes(entry.subject.trim());
 
         return (
           <div key={entry.id} className="rounded-lg border border-gray-150 bg-gray-50/60 p-3">
@@ -87,15 +146,56 @@ export default function SubjectInput({ subjects, onChange, showErrors }: Props) 
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 1l4 4 4-4"/></svg>
                 </button>
               </div>
-              <input
-                type="text"
-                placeholder="科目"
-                value={entry.subject}
-                onChange={(e) => updateField(entry.id, 'subject', e.target.value)}
-                className={`w-[72px] shrink-0 ${inputBase} px-2.5 py-2 font-medium ${
-                  missingSubject ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
-                }`}
-              />
+
+              {/* Subject input: dropdown or text input */}
+              {hasMaster && !isCustom && !subjectNotInMaster ? (
+                <select
+                  value={entry.subject}
+                  onChange={(e) => handleSelectChange(entry.id, e.target.value)}
+                  className={`w-[100px] shrink-0 ${inputBase} px-2 py-2 font-medium ${
+                    missingSubject ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
+                  }`}
+                >
+                  <option value="">科目を選択</option>
+                  {subjectMaster.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                  <option disabled>──────</option>
+                  <option value="__other__">その他（手入力）</option>
+                  <option value="__add_new__">＋ 新しい科目を追加</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-1 shrink-0">
+                  <input
+                    type="text"
+                    placeholder={customMode === 'addNew' ? '科目名（登録）' : '科目'}
+                    value={entry.subject}
+                    onChange={(e) => updateField(entry.id, 'subject', e.target.value)}
+                    onBlur={() => {
+                      if (customMode === 'addNew' && entry.subject.trim()) {
+                        handleCustomConfirm(entry.id, entry.subject);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customMode === 'addNew' && entry.subject.trim()) {
+                        handleCustomConfirm(entry.id, entry.subject);
+                      }
+                    }}
+                    className={`w-[72px] ${inputBase} px-2.5 py-2 font-medium ${
+                      missingSubject ? 'border-red-300 bg-red-50/50' : customMode === 'addNew' ? 'border-violet-300 bg-violet-50/30' : 'border-gray-200'
+                    }`}
+                  />
+                  {hasMaster && (
+                    <button
+                      onClick={() => handleBackToSelect(entry.id)}
+                      className="text-[10px] text-blue-500 hover:text-blue-700 whitespace-nowrap shrink-0"
+                    >
+                      一覧
+                    </button>
+                  )}
+                </div>
+              )}
+
               <input
                 type="text"
                 placeholder="教材名"

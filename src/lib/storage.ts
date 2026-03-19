@@ -3,7 +3,10 @@ import { Preset, SubjectEntry, ScheduleHistory, generateId } from './types';
 const PRESETS_KEY = 'homework-scheduler-presets';
 const HISTORY_KEY = 'homework-scheduler-history';
 const SEEDED_KEY = 'homework-scheduler-seeded';
+const SUBJECT_MASTER_KEY = 'subject-master';
 const MAX_HISTORY = 30;
+
+const DEFAULT_SUBJECTS = ['数学', '英語', '国語', '理科', '社会'];
 
 // === Sample Preset ===
 
@@ -76,6 +79,31 @@ export function deleteHistory(id: string): void {
   saveHistory(history);
 }
 
+// === Subject Master ===
+
+export function loadSubjectMaster(): string[] {
+  if (typeof window === 'undefined') return DEFAULT_SUBJECTS;
+  const data = localStorage.getItem(SUBJECT_MASTER_KEY);
+  if (!data) {
+    saveSubjectMaster(DEFAULT_SUBJECTS);
+    return DEFAULT_SUBJECTS;
+  }
+  return JSON.parse(data);
+}
+
+export function saveSubjectMaster(subjects: string[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SUBJECT_MASTER_KEY, JSON.stringify(subjects));
+}
+
+export function addToSubjectMaster(subject: string): void {
+  const subjects = loadSubjectMaster();
+  const trimmed = subject.trim();
+  if (!trimmed || subjects.includes(trimmed)) return;
+  subjects.push(trimmed);
+  saveSubjectMaster(subjects);
+}
+
 // === Export / Import ===
 
 interface ExportData {
@@ -83,6 +111,7 @@ interface ExportData {
   exportedAt: string;
   presets: Preset[];
   history: ScheduleHistory[];
+  subjectMaster?: string[];
 }
 
 export function exportData(): string {
@@ -91,6 +120,7 @@ export function exportData(): string {
     exportedAt: new Date().toISOString(),
     presets: loadPresets(),
     history: loadHistory(),
+    subjectMaster: loadSubjectMaster(),
   };
   return JSON.stringify(data, null, 2);
 }
@@ -102,5 +132,8 @@ export function importData(json: string): { presets: number; history: number } {
   }
   savePresets(data.presets);
   saveHistory(data.history);
+  if (data.subjectMaster) {
+    saveSubjectMaster(data.subjectMaster);
+  }
   return { presets: data.presets.length, history: data.history.length };
 }

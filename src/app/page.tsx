@@ -12,7 +12,7 @@ import {
 } from '@/lib/types';
 import { calculateSchedule } from '@/lib/scheduler';
 import { usePresets } from '@/hooks/usePresets';
-import { addHistory, loadHistory, deleteHistory, exportData, importData } from '@/lib/storage';
+import { addHistory, loadHistory, deleteHistory, exportData, importData, loadSubjectMaster, saveSubjectMaster, addToSubjectMaster } from '@/lib/storage';
 import SubjectInput from '@/components/SubjectInput';
 import DateSetting from '@/components/DateSetting';
 import DayConfig from '@/components/DayConfig';
@@ -75,11 +75,40 @@ export default function Home() {
   const [historySearch, setHistorySearch] = useState('');
   const [customDays, setCustomDays] = useState('');
 
+  const [subjectMaster, setSubjectMaster] = useState<string[]>([]);
+  const [newMasterSubject, setNewMasterSubject] = useState('');
+
   const { presets, addPreset, updatePreset, deletePreset, reload: reloadPresets } = usePresets();
 
   useEffect(() => {
     setHistory(loadHistory());
+    setSubjectMaster(loadSubjectMaster());
   }, []);
+
+  const handleSaveSubjectMaster = (updated: string[]) => {
+    setSubjectMaster(updated);
+    saveSubjectMaster(updated);
+  };
+
+  const handleAddMasterSubject = () => {
+    const trimmed = newMasterSubject.trim();
+    if (!trimmed || subjectMaster.includes(trimmed)) return;
+    const updated = [...subjectMaster, trimmed];
+    handleSaveSubjectMaster(updated);
+    setNewMasterSubject('');
+  };
+
+  const handleRemoveMasterSubject = (subject: string) => {
+    handleSaveSubjectMaster(subjectMaster.filter((s) => s !== subject));
+  };
+
+  const handleMoveMasterSubject = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= subjectMaster.length) return;
+    const arr = [...subjectMaster];
+    [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    handleSaveSubjectMaster(arr);
+  };
 
   const handleStartDateChange = (date: string) => {
     setStartDate(date);
@@ -154,6 +183,20 @@ export default function Home() {
       })));
     }
     setShowErrors(false);
+
+    // Auto-add missing subjects to master
+    const currentMaster = loadSubjectMaster();
+    let updated = false;
+    for (const s of preset.subjects) {
+      const name = s.subject.trim();
+      if (name && !currentMaster.includes(name)) {
+        currentMaster.push(name);
+        updated = true;
+      }
+    }
+    if (updated) {
+      handleSaveSubjectMaster(currentMaster);
+    }
   };
 
   const handleSavePreset = (name: string) => {
@@ -214,6 +257,7 @@ export default function Home() {
           const result = importData(reader.result as string);
           setHistory(loadHistory());
           reloadPresets();
+          setSubjectMaster(loadSubjectMaster());
           setImportMsg(`復元完了（プリセット${result.presets}件・履歴${result.history}件）`);
           setTimeout(() => setImportMsg(''), 3000);
         } catch {
@@ -336,8 +380,68 @@ export default function Home() {
 
       {/* Data management panel */}
       {showDataMenu && (
-        <div className="mb-4 print:hidden">
-          <Section title="データ管理">
+        <div className="mb-4 print:hidden space-y-4">
+          {/* Subject master management */}
+          <Section title="担当科目の管理">
+            <p className="text-[11px] text-gray-400 mb-3">
+              ここで登録した科目が科目入力欄のプルダウンに表示されます。
+            </p>
+            <div className="space-y-1.5 mb-3">
+              {subjectMaster.length === 0 ? (
+                <p className="text-xs text-gray-400 py-2 text-center">科目が登録されていません</p>
+              ) : (
+                subjectMaster.map((subject, idx) => (
+                  <div key={subject} className="flex items-center gap-1.5 rounded-lg border border-gray-100 px-3 py-2 bg-gray-50/50">
+                    <div className="flex flex-col shrink-0 w-4">
+                      <button
+                        onClick={() => handleMoveMasterSubject(idx, -1)}
+                        disabled={idx === 0}
+                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                      >
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 5l4-4 4 4"/></svg>
+                      </button>
+                      <button
+                        onClick={() => handleMoveMasterSubject(idx, 1)}
+                        disabled={idx === subjectMaster.length - 1}
+                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                      >
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 1l4 4 4-4"/></svg>
+                      </button>
+                    </div>
+                    <span className="flex-1 text-sm font-medium text-gray-700">{subject}</span>
+                    <button
+                      onClick={() => handleRemoveMasterSubject(subject)}
+                      className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <line x1="3.5" y1="3.5" x2="10.5" y2="10.5" />
+                        <line x1="10.5" y1="3.5" x2="3.5" y2="10.5" />
+                      </svg>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="新しい科目名"
+                value={newMasterSubject}
+                onChange={(e) => setNewMasterSubject(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddMasterSubject(); }}
+                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+              <button
+                onClick={handleAddMasterSubject}
+                disabled={!newMasterSubject.trim() || subjectMaster.includes(newMasterSubject.trim())}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 transition-colors"
+              >
+                追加
+              </button>
+            </div>
+          </Section>
+
+          <Section title="バックアップ">
             <p className="text-[11px] text-gray-400 mb-3">
               プリセットと履歴をファイルに保存・復元できます。再インストール時のデータ引き継ぎに使えます。
             </p>
@@ -443,7 +547,16 @@ export default function Home() {
 
         {/* Subjects */}
         <Section title="科目・教材・量">
-          <SubjectInput subjects={subjects} onChange={setSubjects} showErrors={showErrors} />
+          <SubjectInput
+            subjects={subjects}
+            onChange={setSubjects}
+            showErrors={showErrors}
+            subjectMaster={subjectMaster}
+            onAddToMaster={(name) => {
+              addToSubjectMaster(name);
+              setSubjectMaster(loadSubjectMaster());
+            }}
+          />
         </Section>
 
         {/* Day distribution */}
