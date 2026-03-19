@@ -12,7 +12,7 @@ import {
 } from '@/lib/types';
 import { calculateSchedule } from '@/lib/scheduler';
 import { usePresets } from '@/hooks/usePresets';
-import { addHistory, loadHistory, deleteHistory, exportData, importData, loadSubjectMaster, saveSubjectMaster, addToSubjectMaster } from '@/lib/storage';
+import { addHistory, loadHistory, deleteHistory, exportData, importData, loadSubjectMaster, saveSubjectMaster, addToSubjectMaster, addMaterialToSubject, SubjectMasterEntry } from '@/lib/storage';
 import SubjectInput from '@/components/SubjectInput';
 import DateSetting from '@/components/DateSetting';
 import DayConfig from '@/components/DayConfig';
@@ -75,8 +75,10 @@ export default function Home() {
   const [historySearch, setHistorySearch] = useState('');
   const [customDays, setCustomDays] = useState('');
 
-  const [subjectMaster, setSubjectMaster] = useState<string[]>([]);
+  const [subjectMaster, setSubjectMaster] = useState<SubjectMasterEntry[]>([]);
   const [newMasterSubject, setNewMasterSubject] = useState('');
+  const [expandedMasterIdx, setExpandedMasterIdx] = useState<number | null>(null);
+  const [newMaterial, setNewMaterial] = useState('');
 
   const { presets, addPreset, updatePreset, deletePreset, reload: reloadPresets } = usePresets();
 
@@ -85,21 +87,24 @@ export default function Home() {
     setSubjectMaster(loadSubjectMaster());
   }, []);
 
-  const handleSaveSubjectMaster = (updated: string[]) => {
+  const reloadMaster = () => setSubjectMaster(loadSubjectMaster());
+
+  const handleSaveSubjectMaster = (updated: SubjectMasterEntry[]) => {
     setSubjectMaster(updated);
     saveSubjectMaster(updated);
   };
 
   const handleAddMasterSubject = () => {
     const trimmed = newMasterSubject.trim();
-    if (!trimmed || subjectMaster.includes(trimmed)) return;
-    const updated = [...subjectMaster, trimmed];
+    if (!trimmed || subjectMaster.some((s) => s.name === trimmed)) return;
+    const updated = [...subjectMaster, { name: trimmed, materials: [] }];
     handleSaveSubjectMaster(updated);
     setNewMasterSubject('');
   };
 
-  const handleRemoveMasterSubject = (subject: string) => {
-    handleSaveSubjectMaster(subjectMaster.filter((s) => s !== subject));
+  const handleRemoveMasterSubject = (name: string) => {
+    handleSaveSubjectMaster(subjectMaster.filter((s) => s.name !== name));
+    setExpandedMasterIdx(null);
   };
 
   const handleMoveMasterSubject = (idx: number, dir: -1 | 1) => {
@@ -108,6 +113,27 @@ export default function Home() {
     const arr = [...subjectMaster];
     [arr[idx], arr[target]] = [arr[target], arr[idx]];
     handleSaveSubjectMaster(arr);
+    if (expandedMasterIdx === idx) setExpandedMasterIdx(target);
+    else if (expandedMasterIdx === target) setExpandedMasterIdx(idx);
+  };
+
+  const handleAddMaterial = (subjectIdx: number) => {
+    const trimmed = newMaterial.trim();
+    if (!trimmed) return;
+    const entry = subjectMaster[subjectIdx];
+    if (entry.materials.includes(trimmed)) return;
+    const updated = subjectMaster.map((s, i) =>
+      i === subjectIdx ? { ...s, materials: [...s.materials, trimmed] } : s
+    );
+    handleSaveSubjectMaster(updated);
+    setNewMaterial('');
+  };
+
+  const handleRemoveMaterial = (subjectIdx: number, material: string) => {
+    const updated = subjectMaster.map((s, i) =>
+      i === subjectIdx ? { ...s, materials: s.materials.filter((m) => m !== material) } : s
+    );
+    handleSaveSubjectMaster(updated);
   };
 
   const handleStartDateChange = (date: string) => {
@@ -184,19 +210,13 @@ export default function Home() {
     }
     setShowErrors(false);
 
-    // Auto-add missing subjects to master
-    const currentMaster = loadSubjectMaster();
-    let updated = false;
+    // Auto-add missing subjects and materials to master
     for (const s of preset.subjects) {
-      const name = s.subject.trim();
-      if (name && !currentMaster.includes(name)) {
-        currentMaster.push(name);
-        updated = true;
+      if (s.subject.trim()) {
+        addToSubjectMaster(s.subject.trim(), s.material.trim() || undefined);
       }
     }
-    if (updated) {
-      handleSaveSubjectMaster(currentMaster);
-    }
+    reloadMaster();
   };
 
   const handleSavePreset = (name: string) => {
@@ -316,7 +336,7 @@ export default function Home() {
                   : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}
             >
-              データ管理
+              設定
             </button>
           </div>
         </div>
@@ -382,42 +402,97 @@ export default function Home() {
       {showDataMenu && (
         <div className="mb-4 print:hidden space-y-4">
           {/* Subject master management */}
-          <Section title="担当科目の管理">
+          <Section title="担当科目・教材の管理">
             <p className="text-[11px] text-gray-400 mb-3">
-              ここで登録した科目が科目入力欄のプルダウンに表示されます。
+              科目と教材を登録すると、入力欄のプルダウンに表示されます。科目をタップすると教材を管理できます。
             </p>
             <div className="space-y-1.5 mb-3">
               {subjectMaster.length === 0 ? (
                 <p className="text-xs text-gray-400 py-2 text-center">科目が登録されていません</p>
               ) : (
-                subjectMaster.map((subject, idx) => (
-                  <div key={subject} className="flex items-center gap-1.5 rounded-lg border border-gray-100 px-3 py-2 bg-gray-50/50">
-                    <div className="flex flex-col shrink-0 w-4">
+                subjectMaster.map((entry, idx) => (
+                  <div key={entry.name} className="rounded-lg border border-gray-100 bg-gray-50/50 overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 py-2">
+                      <div className="flex flex-col shrink-0 w-4">
+                        <button
+                          onClick={() => handleMoveMasterSubject(idx, -1)}
+                          disabled={idx === 0}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                        >
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 5l4-4 4 4"/></svg>
+                        </button>
+                        <button
+                          onClick={() => handleMoveMasterSubject(idx, 1)}
+                          disabled={idx === subjectMaster.length - 1}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                        >
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 1l4 4 4-4"/></svg>
+                        </button>
+                      </div>
                       <button
-                        onClick={() => handleMoveMasterSubject(idx, -1)}
-                        disabled={idx === 0}
-                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                        onClick={() => { setExpandedMasterIdx(expandedMasterIdx === idx ? null : idx); setNewMaterial(''); }}
+                        className="flex-1 text-left flex items-center gap-1.5"
                       >
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 5l4-4 4 4"/></svg>
+                        <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                        {entry.materials.length > 0 && (
+                          <span className="text-[10px] text-gray-400">({entry.materials.length}教材)</span>
+                        )}
+                        <svg
+                          width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                          className={`ml-auto text-gray-300 transition-transform ${expandedMasterIdx === idx ? 'rotate-180' : ''}`}
+                        >
+                          <path d="M1 1l4 4 4-4"/>
+                        </svg>
                       </button>
                       <button
-                        onClick={() => handleMoveMasterSubject(idx, 1)}
-                        disabled={idx === subjectMaster.length - 1}
-                        className="text-gray-300 hover:text-gray-600 disabled:opacity-20 h-3 flex items-center justify-center"
+                        onClick={() => handleRemoveMasterSubject(entry.name)}
+                        className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                       >
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 1l4 4 4-4"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <line x1="3.5" y1="3.5" x2="10.5" y2="10.5" />
+                          <line x1="10.5" y1="3.5" x2="3.5" y2="10.5" />
+                        </svg>
                       </button>
                     </div>
-                    <span className="flex-1 text-sm font-medium text-gray-700">{subject}</span>
-                    <button
-                      onClick={() => handleRemoveMasterSubject(subject)}
-                      className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <line x1="3.5" y1="3.5" x2="10.5" y2="10.5" />
-                        <line x1="10.5" y1="3.5" x2="3.5" y2="10.5" />
-                      </svg>
-                    </button>
+                    {/* Expanded material list */}
+                    {expandedMasterIdx === idx && (
+                      <div className="border-t border-gray-100 bg-white px-3 py-2.5 pl-9">
+                        {entry.materials.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {entry.materials.map((mat) => (
+                              <span key={mat} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-600">
+                                {mat}
+                                <button
+                                  onClick={() => handleRemoveMaterial(idx, mat)}
+                                  className="text-gray-400 hover:text-red-500 -mr-0.5"
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                    <line x1="2.5" y1="2.5" x2="7.5" y2="7.5" /><line x1="7.5" y1="2.5" x2="2.5" y2="7.5" />
+                                  </svg>
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="教材名を追加"
+                            value={newMaterial}
+                            onChange={(e) => setNewMaterial(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddMaterial(idx); }}
+                            className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[12px] focus:border-blue-500 focus:bg-white focus:outline-none"
+                          />
+                          <button
+                            onClick={() => handleAddMaterial(idx)}
+                            disabled={!newMaterial.trim() || entry.materials.includes(newMaterial.trim())}
+                            className="rounded-md bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                          >
+                            追加
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -433,7 +508,7 @@ export default function Home() {
               />
               <button
                 onClick={handleAddMasterSubject}
-                disabled={!newMasterSubject.trim() || subjectMaster.includes(newMasterSubject.trim())}
+                disabled={!newMasterSubject.trim() || subjectMaster.some((s) => s.name === newMasterSubject.trim())}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 transition-colors"
               >
                 追加
@@ -552,9 +627,13 @@ export default function Home() {
             onChange={setSubjects}
             showErrors={showErrors}
             subjectMaster={subjectMaster}
-            onAddToMaster={(name) => {
-              addToSubjectMaster(name);
-              setSubjectMaster(loadSubjectMaster());
+            onAddToMaster={(name, material) => {
+              addToSubjectMaster(name, material);
+              reloadMaster();
+            }}
+            onAddMaterial={(subjectName, material) => {
+              addMaterialToSubject(subjectName, material);
+              reloadMaster();
             }}
           />
         </Section>

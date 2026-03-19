@@ -6,7 +6,18 @@ const SEEDED_KEY = 'homework-scheduler-seeded';
 const SUBJECT_MASTER_KEY = 'subject-master';
 const MAX_HISTORY = 30;
 
-const DEFAULT_SUBJECTS = ['数学', '英語', '国語', '理科', '社会'];
+export interface SubjectMasterEntry {
+  name: string;
+  materials: string[];
+}
+
+const DEFAULT_SUBJECT_MASTER: SubjectMasterEntry[] = [
+  { name: '数学', materials: [] },
+  { name: '英語', materials: [] },
+  { name: '国語', materials: [] },
+  { name: '理科', materials: [] },
+  { name: '社会', materials: [] },
+];
 
 // === Sample Preset ===
 
@@ -81,27 +92,65 @@ export function deleteHistory(id: string): void {
 
 // === Subject Master ===
 
-export function loadSubjectMaster(): string[] {
-  if (typeof window === 'undefined') return DEFAULT_SUBJECTS;
-  const data = localStorage.getItem(SUBJECT_MASTER_KEY);
-  if (!data) {
-    saveSubjectMaster(DEFAULT_SUBJECTS);
-    return DEFAULT_SUBJECTS;
+function migrateSubjectMaster(raw: unknown): SubjectMasterEntry[] {
+  if (!Array.isArray(raw)) return DEFAULT_SUBJECT_MASTER;
+  if (raw.length === 0) return [];
+  // Old format: string[]
+  if (typeof raw[0] === 'string') {
+    return (raw as string[]).map((name) => ({ name, materials: [] }));
   }
-  return JSON.parse(data);
+  // New format
+  return raw as SubjectMasterEntry[];
 }
 
-export function saveSubjectMaster(subjects: string[]): void {
+export function loadSubjectMaster(): SubjectMasterEntry[] {
+  if (typeof window === 'undefined') return DEFAULT_SUBJECT_MASTER;
+  const data = localStorage.getItem(SUBJECT_MASTER_KEY);
+  if (!data) {
+    saveSubjectMaster(DEFAULT_SUBJECT_MASTER);
+    return DEFAULT_SUBJECT_MASTER;
+  }
+  const parsed = JSON.parse(data);
+  const migrated = migrateSubjectMaster(parsed);
+  // Re-save if migrated from old format
+  if (typeof parsed[0] === 'string') {
+    saveSubjectMaster(migrated);
+  }
+  return migrated;
+}
+
+export function saveSubjectMaster(subjects: SubjectMasterEntry[]): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(SUBJECT_MASTER_KEY, JSON.stringify(subjects));
 }
 
-export function addToSubjectMaster(subject: string): void {
+export function addToSubjectMaster(subject: string, material?: string): void {
   const subjects = loadSubjectMaster();
   const trimmed = subject.trim();
-  if (!trimmed || subjects.includes(trimmed)) return;
-  subjects.push(trimmed);
+  if (!trimmed) return;
+  const existing = subjects.find((s) => s.name === trimmed);
+  if (existing) {
+    if (material?.trim() && !existing.materials.includes(material.trim())) {
+      existing.materials.push(material.trim());
+      saveSubjectMaster(subjects);
+    }
+    return;
+  }
+  subjects.push({ name: trimmed, materials: material?.trim() ? [material.trim()] : [] });
   saveSubjectMaster(subjects);
+}
+
+export function addMaterialToSubject(subjectName: string, material: string): void {
+  const subjects = loadSubjectMaster();
+  const entry = subjects.find((s) => s.name === subjectName);
+  const trimmed = material.trim();
+  if (!trimmed) return;
+  if (entry) {
+    if (!entry.materials.includes(trimmed)) {
+      entry.materials.push(trimmed);
+      saveSubjectMaster(subjects);
+    }
+  }
 }
 
 // === Export / Import ===
@@ -111,7 +160,7 @@ interface ExportData {
   exportedAt: string;
   presets: Preset[];
   history: ScheduleHistory[];
-  subjectMaster?: string[];
+  subjectMaster?: SubjectMasterEntry[] | string[];
 }
 
 export function exportData(): string {
@@ -133,7 +182,7 @@ export function importData(json: string): { presets: number; history: number } {
   savePresets(data.presets);
   saveHistory(data.history);
   if (data.subjectMaster) {
-    saveSubjectMaster(data.subjectMaster);
+    saveSubjectMaster(migrateSubjectMaster(data.subjectMaster));
   }
   return { presets: data.presets.length, history: data.history.length };
 }

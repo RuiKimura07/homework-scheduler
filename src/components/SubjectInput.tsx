@@ -2,21 +2,22 @@
 
 import { useState } from 'react';
 import { SubjectEntry, Unit, UNITS, InputMode, generateId } from '@/lib/types';
+import { SubjectMasterEntry } from '@/lib/storage';
 
 interface Props {
   subjects: SubjectEntry[];
   onChange: (subjects: SubjectEntry[]) => void;
   showErrors?: boolean;
-  subjectMaster: string[];
-  onAddToMaster: (name: string) => void;
+  subjectMaster: SubjectMasterEntry[];
+  onAddToMaster: (name: string, material?: string) => void;
+  onAddMaterial: (subjectName: string, material: string) => void;
 }
 
-// Track which rows are in "custom input" mode (not selecting from dropdown)
-// Key: subject entry id, Value: 'other' (temporary) or 'addNew' (add to master)
 type CustomMode = 'other' | 'addNew';
 
-export default function SubjectInput({ subjects, onChange, showErrors, subjectMaster, onAddToMaster }: Props) {
-  const [customModes, setCustomModes] = useState<Record<string, CustomMode>>({});
+export default function SubjectInput({ subjects, onChange, showErrors, subjectMaster, onAddToMaster, onAddMaterial }: Props) {
+  const [subjectCustomModes, setSubjectCustomModes] = useState<Record<string, CustomMode>>({});
+  const [materialCustomModes, setMaterialCustomModes] = useState<Record<string, CustomMode>>({});
 
   const addRow = () => {
     onChange([
@@ -28,33 +29,20 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
   const removeRow = (id: string) => {
     if (subjects.length <= 1) return;
     onChange(subjects.filter((s) => s.id !== id));
-    setCustomModes((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const updateField = (
-    id: string,
-    field: keyof SubjectEntry,
-    value: string | number
-  ) => {
-    onChange(
-      subjects.map((s) =>
-        s.id === id ? { ...s, [field]: value } : s
-      )
-    );
+  const updateField = (id: string, field: keyof SubjectEntry, value: string | number) => {
+    onChange(subjects.map((s) => s.id === id ? { ...s, [field]: value } : s));
   };
 
   const toggleMode = (id: string) => {
-    onChange(
-      subjects.map((s) => {
-        if (s.id !== id) return s;
-        const newMode: InputMode = s.inputMode === 'amount' ? 'range' : 'amount';
-        return { ...s, inputMode: newMode };
-      })
-    );
+    onChange(subjects.map((s) => {
+      if (s.id !== id) return s;
+      const newMode: InputMode = s.inputMode === 'amount' ? 'range' : 'amount';
+      return { ...s, inputMode: newMode };
+    }));
   };
 
   const moveUp = (idx: number) => {
@@ -71,47 +59,69 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
     onChange(arr);
   };
 
-  const handleSelectChange = (id: string, value: string) => {
+  // --- Subject select handlers ---
+  const handleSubjectSelect = (id: string, value: string) => {
     if (value === '__other__') {
-      setCustomModes((prev) => ({ ...prev, [id]: 'other' }));
+      setSubjectCustomModes((prev) => ({ ...prev, [id]: 'other' }));
       updateField(id, 'subject', '');
+      updateField(id, 'material', '');
+      // Also reset material to custom since there's no master entry
+      setMaterialCustomModes((prev) => ({ ...prev, [id]: 'other' }));
     } else if (value === '__add_new__') {
-      setCustomModes((prev) => ({ ...prev, [id]: 'addNew' }));
+      setSubjectCustomModes((prev) => ({ ...prev, [id]: 'addNew' }));
       updateField(id, 'subject', '');
+      updateField(id, 'material', '');
+      setMaterialCustomModes((prev) => ({ ...prev, [id]: 'other' }));
     } else {
-      setCustomModes((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+      setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
       updateField(id, 'subject', value);
+      // Reset material when subject changes
+      updateField(id, 'material', '');
+      setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
     }
   };
 
-  const handleCustomConfirm = (id: string, name: string) => {
-    const mode = customModes[id];
-    if (mode === 'addNew' && name.trim()) {
+  const handleSubjectCustomConfirm = (id: string, name: string) => {
+    if (subjectCustomModes[id] === 'addNew' && name.trim()) {
       onAddToMaster(name.trim());
     }
-    setCustomModes((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const handleBackToSelect = (id: string) => {
-    setCustomModes((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+  const handleSubjectBackToSelect = (id: string) => {
+    setSubjectCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
     updateField(id, 'subject', '');
+    updateField(id, 'material', '');
+    setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  // --- Material select handlers ---
+  const handleMaterialSelect = (id: string, subjectName: string, value: string) => {
+    if (value === '__other__') {
+      setMaterialCustomModes((prev) => ({ ...prev, [id]: 'other' }));
+      updateField(id, 'material', '');
+    } else if (value === '__add_new__') {
+      setMaterialCustomModes((prev) => ({ ...prev, [id]: 'addNew' }));
+      updateField(id, 'material', '');
+    } else {
+      setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      updateField(id, 'material', value);
+    }
+  };
+
+  const handleMaterialCustomConfirm = (id: string, subjectName: string, material: string) => {
+    if (materialCustomModes[id] === 'addNew' && material.trim() && subjectName.trim()) {
+      onAddMaterial(subjectName.trim(), material.trim());
+    }
+    setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const handleMaterialBackToSelect = (id: string) => {
+    setMaterialCustomModes((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    updateField(id, 'material', '');
   };
 
   const inputBase = 'rounded-md border bg-white text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-colors';
-
-  // Check if subject master is empty (fallback to text input)
   const hasMaster = subjectMaster.length > 0;
 
   return (
@@ -121,10 +131,21 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
         const missingAmount = showErrors && entry.subject.trim() && entry.inputMode === 'amount' && !entry.amount;
         const missingRange = showErrors && entry.subject.trim() && entry.inputMode === 'range' && (!entry.rangeStart || !entry.rangeEnd);
         const isRange = entry.inputMode === 'range';
-        const customMode = customModes[entry.id];
-        const isCustom = !!customMode;
-        // If the current subject is not in the master and not empty, show as custom
-        const subjectNotInMaster = entry.subject.trim() && !subjectMaster.includes(entry.subject.trim());
+
+        const subjectCustom = subjectCustomModes[entry.id];
+        const isSubjectCustom = !!subjectCustom;
+        const subjectNotInMaster = entry.subject.trim() && !subjectMaster.some((s) => s.name === entry.subject.trim());
+
+        // Get materials for the selected subject
+        const masterEntry = subjectMaster.find((s) => s.name === entry.subject.trim());
+        const availableMaterials = masterEntry?.materials ?? [];
+        const hasMaterials = availableMaterials.length > 0;
+
+        const materialCustom = materialCustomModes[entry.id];
+        const isMaterialCustom = !!materialCustom;
+        const materialNotInMaster = entry.material.trim() && !availableMaterials.includes(entry.material.trim());
+        // Show text input for material if: no master entry for subject, or in custom mode, or material not in list
+        const showMaterialAsText = isSubjectCustom || subjectNotInMaster || !hasMaterials || isMaterialCustom || materialNotInMaster;
 
         return (
           <div key={entry.id} className="rounded-lg border border-gray-150 bg-gray-50/60 p-3">
@@ -147,18 +168,18 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                 </button>
               </div>
 
-              {/* Subject input: dropdown or text input */}
-              {hasMaster && !isCustom && !subjectNotInMaster ? (
+              {/* Subject: dropdown or text */}
+              {hasMaster && !isSubjectCustom && !subjectNotInMaster ? (
                 <select
                   value={entry.subject}
-                  onChange={(e) => handleSelectChange(entry.id, e.target.value)}
+                  onChange={(e) => handleSubjectSelect(entry.id, e.target.value)}
                   className={`w-[100px] shrink-0 ${inputBase} px-2 py-2 font-medium ${
                     missingSubject ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                   }`}
                 >
                   <option value="">科目を選択</option>
                   {subjectMaster.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.name} value={s.name}>{s.name}</option>
                   ))}
                   <option disabled>──────</option>
                   <option value="__other__">その他（手入力）</option>
@@ -168,26 +189,26 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                 <div className="flex items-center gap-1 shrink-0">
                   <input
                     type="text"
-                    placeholder={customMode === 'addNew' ? '科目名（登録）' : '科目'}
+                    placeholder={subjectCustom === 'addNew' ? '科目名（登録）' : '科目'}
                     value={entry.subject}
                     onChange={(e) => updateField(entry.id, 'subject', e.target.value)}
                     onBlur={() => {
-                      if (customMode === 'addNew' && entry.subject.trim()) {
-                        handleCustomConfirm(entry.id, entry.subject);
+                      if (subjectCustom === 'addNew' && entry.subject.trim()) {
+                        handleSubjectCustomConfirm(entry.id, entry.subject);
                       }
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && customMode === 'addNew' && entry.subject.trim()) {
-                        handleCustomConfirm(entry.id, entry.subject);
+                      if (e.key === 'Enter' && subjectCustom === 'addNew' && entry.subject.trim()) {
+                        handleSubjectCustomConfirm(entry.id, entry.subject);
                       }
                     }}
                     className={`w-[72px] ${inputBase} px-2.5 py-2 font-medium ${
-                      missingSubject ? 'border-red-300 bg-red-50/50' : customMode === 'addNew' ? 'border-violet-300 bg-violet-50/30' : 'border-gray-200'
+                      missingSubject ? 'border-red-300 bg-red-50/50' : subjectCustom === 'addNew' ? 'border-violet-300 bg-violet-50/30' : 'border-gray-200'
                     }`}
                   />
                   {hasMaster && (
                     <button
-                      onClick={() => handleBackToSelect(entry.id)}
+                      onClick={() => handleSubjectBackToSelect(entry.id)}
                       className="text-[10px] text-blue-500 hover:text-blue-700 whitespace-nowrap shrink-0"
                     >
                       一覧
@@ -196,13 +217,53 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                 </div>
               )}
 
-              <input
-                type="text"
-                placeholder="教材名"
-                value={entry.material}
-                onChange={(e) => updateField(entry.id, 'material', e.target.value)}
-                className={`min-w-0 flex-1 ${inputBase} px-2.5 py-2 border-gray-200`}
-              />
+              {/* Material: dropdown or text */}
+              {!showMaterialAsText && entry.subject.trim() ? (
+                <select
+                  value={entry.material}
+                  onChange={(e) => handleMaterialSelect(entry.id, entry.subject, e.target.value)}
+                  className={`min-w-0 flex-1 ${inputBase} px-2 py-2 border-gray-200`}
+                >
+                  <option value="">教材を選択</option>
+                  {availableMaterials.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                  <option disabled>──────</option>
+                  <option value="__other__">その他（手入力）</option>
+                  <option value="__add_new__">＋ 新しい教材を追加</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-1 min-w-0 flex-1">
+                  <input
+                    type="text"
+                    placeholder={materialCustom === 'addNew' ? '教材名（登録）' : '教材名'}
+                    value={entry.material}
+                    onChange={(e) => updateField(entry.id, 'material', e.target.value)}
+                    onBlur={() => {
+                      if (materialCustom === 'addNew' && entry.material.trim() && entry.subject.trim()) {
+                        handleMaterialCustomConfirm(entry.id, entry.subject, entry.material);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && materialCustom === 'addNew' && entry.material.trim() && entry.subject.trim()) {
+                        handleMaterialCustomConfirm(entry.id, entry.subject, entry.material);
+                      }
+                    }}
+                    className={`min-w-0 flex-1 ${inputBase} px-2.5 py-2 ${
+                      materialCustom === 'addNew' ? 'border-violet-300 bg-violet-50/30' : 'border-gray-200'
+                    }`}
+                  />
+                  {hasMaterials && !isSubjectCustom && !subjectNotInMaster && (
+                    <button
+                      onClick={() => handleMaterialBackToSelect(entry.id)}
+                      className="text-[10px] text-blue-500 hover:text-blue-700 whitespace-nowrap shrink-0"
+                    >
+                      一覧
+                    </button>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => removeRow(entry.id)}
                 disabled={subjects.length <= 1}
@@ -215,15 +276,13 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
               </button>
             </div>
 
-            {/* Row 2: mode tabs + inputs - aligned with row 1 */}
+            {/* Row 2: mode tabs + inputs */}
             <div className="flex items-center gap-2 pl-6">
               <div className="shrink-0 flex rounded-md border border-gray-200 overflow-hidden">
                 <button
                   onClick={() => !isRange ? null : toggleMode(entry.id)}
                   className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
-                    !isRange
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-gray-400 hover:text-gray-600'
+                    !isRange ? 'bg-blue-500 text-white' : 'bg-white text-gray-400 hover:text-gray-600'
                   }`}
                 >
                   量
@@ -231,9 +290,7 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                 <button
                   onClick={() => isRange ? null : toggleMode(entry.id)}
                   className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors border-l border-gray-200 ${
-                    isRange
-                      ? 'bg-violet-500 text-white'
-                      : 'bg-white text-gray-400 hover:text-gray-600'
+                    isRange ? 'bg-violet-500 text-white' : 'bg-white text-gray-400 hover:text-gray-600'
                   }`}
                 >
                   範囲
