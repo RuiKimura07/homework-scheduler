@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   ScheduleResult,
   formatDate,
@@ -34,6 +35,17 @@ export default function ScheduleCalendar({
   onReset,
 }: Props) {
   const { days, subjects } = result;
+  const [editingRangeCells, setEditingRangeCells] = useState<Set<string>>(new Set());
+
+  const toggleRangeEdit = (subjectId: string, dayIdx: number) => {
+    const key = `${subjectId}-${dayIdx}`;
+    setEditingRangeCells((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const getAmount = (subjectId: string, dayIndex: number): number => {
     if (editedAmounts[subjectId]?.[dayIndex] !== undefined) {
@@ -69,7 +81,7 @@ export default function ScheduleCalendar({
       {hasEdits && (
         <div className="flex justify-end">
           <button
-            onClick={onReset}
+            onClick={() => { onReset(); setEditingRangeCells(new Set()); }}
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -119,17 +131,23 @@ export default function ScheduleCalendar({
                   const isRange = subject.inputMode === 'range';
                   const hasEditsForThis = editedAmounts[subject.id]?.[dayIdx] !== undefined;
 
+                  const isEditingRange = editingRangeCells.has(`${subject.id}-${dayIdx}`);
+                  const showRangeDisplay = isRange && !hasEditsForThis && !isEditingRange && assignment?.rangeStart;
+
                   return (
                     <td key={subject.id} className="px-1.5 py-2 text-center align-middle">
-                      {isRange && !hasEditsForThis && assignment?.rangeStart ? (
-                        <div>
+                      {showRangeDisplay ? (
+                        <button
+                          onClick={() => toggleRangeEdit(subject.id, dayIdx)}
+                          className="w-full text-center hover:bg-white/60 rounded-md py-0.5 transition-colors"
+                        >
                           <div className="text-[12px] font-bold text-gray-800 leading-tight">
                             {assignment.rangeStart === assignment.rangeEnd
                               ? `${assignment.rangeStart}番`
                               : `${assignment.rangeStart}~${assignment.rangeEnd}番`}
                           </div>
                           <div className="text-[9px] text-gray-400 leading-tight">({amount}問)</div>
-                        </div>
+                        </button>
                       ) : (
                         <div className="flex items-center justify-center gap-0.5">
                           <input
