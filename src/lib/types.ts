@@ -65,9 +65,12 @@ export interface ScheduleHistory {
   numDays: number;
   subjects: SubjectEntry[];
   editedAmounts: Record<string, Record<number, number>>;
+  editedRanges?: EditedRanges;
   dayLevels: DistributionLevel[];
   comment: string;
 }
+
+export type EditedRanges = Record<string, Record<number, { start: number; end: number }>>;
 
 export const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 

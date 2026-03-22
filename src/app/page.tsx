@@ -7,6 +7,7 @@ import {
   ScheduleResult,
   ScheduleHistory,
   Preset,
+  EditedRanges,
   generateId,
   formatDate,
 } from '@/lib/types';
@@ -65,6 +66,7 @@ export default function Home() {
   const [editedAmounts, setEditedAmounts] = useState<
     Record<string, Record<number, number>>
   >({});
+  const [editedRanges, setEditedRanges] = useState<EditedRanges>({});
   const [comment, setComment] = useState('');
   const [showErrors, setShowErrors] = useState(false);
   const [history, setHistory] = useState<ScheduleHistory[]>([]);
@@ -174,6 +176,7 @@ export default function Home() {
     const schedule = calculateSchedule(validSubjects, days);
     setResult(schedule);
     setEditedAmounts({});
+    setEditedRanges({});
 
     // Save to history
     const entry: ScheduleHistory = {
@@ -193,7 +196,9 @@ export default function Home() {
 
   const handleResetEdits = () => {
     setEditedAmounts({});
+    setEditedRanges({});
   };
+
 
   const handleLoadPreset = (preset: Preset) => {
     setSubjects(
@@ -658,6 +663,8 @@ export default function Home() {
               result={result}
               editedAmounts={editedAmounts}
               onEditedAmountsChange={setEditedAmounts}
+              editedRanges={editedRanges}
+              onEditedRangesChange={setEditedRanges}
               onReset={handleResetEdits}
             />
           </Section>
@@ -670,6 +677,7 @@ export default function Home() {
               result={result}
               studentName={studentName}
               editedAmounts={editedAmounts}
+              editedRanges={editedRanges}
               comment={comment}
               onCommentChange={setComment}
               nextLessonDate={nextLessonDate}
@@ -686,6 +694,7 @@ export default function Home() {
             result={result}
             studentName={studentName}
             editedAmounts={editedAmounts}
+            editedRanges={editedRanges}
             comment={comment}
             nextLessonDate={nextLessonDate}
           />

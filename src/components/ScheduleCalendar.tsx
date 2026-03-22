@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import {
   ScheduleResult,
   formatDate,
   DistributionLevel,
+  EditedRanges,
 } from '@/lib/types';
 
 interface Props {
   result: ScheduleResult;
-  onEditedAmountsChange: (amounts: Record<string, Record<number, number>>) => void;
   editedAmounts: Record<string, Record<number, number>>;
+  onEditedAmountsChange: (amounts: Record<string, Record<number, number>>) => void;
+  editedRanges: EditedRanges;
+  onEditedRangesChange: (ranges: EditedRanges) => void;
   onReset: () => void;
 }
 
@@ -32,20 +34,11 @@ export default function ScheduleCalendar({
   result,
   editedAmounts,
   onEditedAmountsChange,
+  editedRanges,
+  onEditedRangesChange,
   onReset,
 }: Props) {
   const { days, subjects } = result;
-  const [editingRangeCells, setEditingRangeCells] = useState<Set<string>>(new Set());
-
-  const toggleRangeEdit = (subjectId: string, dayIdx: number) => {
-    const key = `${subjectId}-${dayIdx}`;
-    setEditingRangeCells((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   const getAmount = (subjectId: string, dayIndex: number): number => {
     if (editedAmounts[subjectId]?.[dayIndex] !== undefined) {
@@ -61,6 +54,25 @@ export default function ScheduleCalendar({
     onEditedAmountsChange(updated);
   };
 
+  const getRange = (subjectId: string, dayIndex: number): { start: number; end: number } => {
+    if (editedRanges[subjectId]?.[dayIndex]) {
+      return editedRanges[subjectId][dayIndex];
+    }
+    const assignment = days[dayIndex].assignments.find((a) => a.subjectId === subjectId);
+    return { start: assignment?.rangeStart ?? 0, end: assignment?.rangeEnd ?? 0 };
+  };
+
+  const setRange = (subjectId: string, dayIndex: number, start: number, end: number) => {
+    const updated = { ...editedRanges };
+    if (!updated[subjectId]) updated[subjectId] = {};
+    updated[subjectId] = { ...updated[subjectId], [dayIndex]: { start, end } };
+    onEditedRangesChange(updated);
+
+    // Also update amount to match
+    const amount = start > 0 && end >= start ? end - start + 1 : 0;
+    setAmount(subjectId, dayIndex, amount);
+  };
+
   const getSubjectTotal = (subjectId: string): number => {
     let total = 0;
     for (let i = 0; i < days.length; i++) {
@@ -69,7 +81,7 @@ export default function ScheduleCalendar({
     return total;
   };
 
-  const hasEdits = Object.keys(editedAmounts).length > 0;
+  const hasEdits = Object.keys(editedAmounts).length > 0 || Object.keys(editedRanges).length > 0;
 
   const allMatch = subjects.every((s) => {
     const orig = s.inputMode === 'range' ? s.rangeEnd - s.rangeStart + 1 : s.amount;
@@ -81,7 +93,7 @@ export default function ScheduleCalendar({
       {hasEdits && (
         <div className="flex justify-end">
           <button
-            onClick={() => { onReset(); setEditingRangeCells(new Set()); }}
+            onClick={onReset}
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -127,41 +139,54 @@ export default function ScheduleCalendar({
                 </td>
                 {subjects.map((subject) => {
                   const amount = getAmount(subject.id, dayIdx);
-                  const assignment = days[dayIdx].assignments.find((a) => a.subjectId === subject.id);
                   const isRange = subject.inputMode === 'range';
-                  const hasEditsForThis = editedAmounts[subject.id]?.[dayIdx] !== undefined;
 
-                  const isEditingRange = editingRangeCells.has(`${subject.id}-${dayIdx}`);
-                  const showRangeDisplay = isRange && !hasEditsForThis && !isEditingRange && assignment?.rangeStart;
-
-                  return (
-                    <td key={subject.id} className="px-1.5 py-2 text-center align-middle">
-                      {showRangeDisplay ? (
-                        <button
-                          onClick={() => toggleRangeEdit(subject.id, dayIdx)}
-                          className="w-full text-center hover:bg-white/60 rounded-md py-0.5 transition-colors"
-                        >
-                          <div className="text-[12px] font-bold text-gray-800 leading-tight">
-                            {assignment.rangeStart === assignment.rangeEnd
-                              ? `${assignment.rangeStart}番`
-                              : `${assignment.rangeStart}~${assignment.rangeEnd}番`}
-                          </div>
-                          <div className="text-[9px] text-gray-400 leading-tight">({amount}問)</div>
-                        </button>
-                      ) : (
+                  if (isRange) {
+                    const range = getRange(subject.id, dayIdx);
+                    return (
+                      <td key={subject.id} className="px-1 py-2 text-center align-middle">
                         <div className="flex items-center justify-center gap-0.5">
                           <input
                             type="number"
                             min={0}
-                            value={amount || ''}
-                            onChange={(e) =>
-                              setAmount(subject.id, dayIdx, parseInt(e.target.value) || 0)
-                            }
-                            className="w-11 rounded-md border border-gray-200 bg-white px-1 py-1 text-[13px] text-right tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
+                            value={range.start || ''}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value) || 0;
+                              setRange(subject.id, dayIdx, v, range.end);
+                            }}
+                            className="w-9 rounded-md border border-gray-200 bg-white px-0.5 py-1 text-[12px] text-center tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
                           />
-                          <span className="text-[9px] text-gray-400 whitespace-nowrap">{isRange ? '問' : subject.unit}</span>
+                          <span className="text-[10px] text-gray-300">~</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={range.end || ''}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value) || 0;
+                              setRange(subject.id, dayIdx, range.start, v);
+                            }}
+                            className="w-9 rounded-md border border-gray-200 bg-white px-0.5 py-1 text-[12px] text-center tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
+                          />
+                          <span className="text-[9px] text-gray-400">番</span>
                         </div>
-                      )}
+                      </td>
+                    );
+                  }
+
+                  return (
+                    <td key={subject.id} className="px-1.5 py-2 text-center align-middle">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={amount || ''}
+                          onChange={(e) =>
+                            setAmount(subject.id, dayIdx, parseInt(e.target.value) || 0)
+                          }
+                          className="w-11 rounded-md border border-gray-200 bg-white px-1 py-1 text-[13px] text-right tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
+                        />
+                        <span className="text-[9px] text-gray-400 whitespace-nowrap">{subject.unit}</span>
+                      </div>
                     </td>
                   );
                 })}

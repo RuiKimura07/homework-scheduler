@@ -1,19 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { ScheduleResult, formatDate } from '@/lib/types';
+import { ScheduleResult, EditedRanges, formatDate } from '@/lib/types';
 
 interface Props {
   result: ScheduleResult;
   studentName: string;
   editedAmounts: Record<string, Record<number, number>>;
+  editedRanges?: EditedRanges;
   comment: string;
   onCommentChange?: (value: string) => void;
   nextLessonDate: string;
   onNextLessonDateChange?: (value: string) => void;
 }
 
-export default function PrintView({ result, studentName, editedAmounts, comment, onCommentChange, nextLessonDate, onNextLessonDateChange }: Props) {
+export default function PrintView({ result, studentName, editedAmounts, editedRanges = {}, comment, onCommentChange, nextLessonDate, onNextLessonDateChange }: Props) {
   const { days, subjects } = result;
   const [showPreview, setShowPreview] = useState(false);
 
@@ -22,6 +23,14 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
       return editedAmounts[subjectId][dayIndex];
     }
     return days[dayIndex].assignments.find((a) => a.subjectId === subjectId)?.amount ?? 0;
+  };
+
+  const getRange = (subjectId: string, dayIndex: number): { start: number; end: number } => {
+    if (editedRanges[subjectId]?.[dayIndex]) {
+      return editedRanges[subjectId][dayIndex];
+    }
+    const assignment = days[dayIndex].assignments.find((a) => a.subjectId === subjectId);
+    return { start: assignment?.rangeStart ?? 0, end: assignment?.rangeEnd ?? 0 };
   };
 
   const today = new Date();
@@ -74,14 +83,18 @@ export default function PrintView({ result, studentName, editedAmounts, comment,
                 </td>
                 {subjects.map((subject) => {
                   const amount = getAmount(subject.id, dayIdx);
-                  const assignment = days[dayIdx].assignments.find((a) => a.subjectId === subject.id);
                   const isRange = subject.inputMode === 'range';
                   let label = '-';
                   if (amount > 0) {
-                    if (isRange && assignment?.rangeStart) {
-                      label = assignment.rangeStart === assignment.rangeEnd
-                        ? `No.${assignment.rangeStart}`
-                        : `No.${assignment.rangeStart}~${assignment.rangeEnd}`;
+                    if (isRange) {
+                      const range = getRange(subject.id, dayIdx);
+                      if (range.start > 0) {
+                        label = range.start === range.end
+                          ? `No.${range.start}`
+                          : `No.${range.start}~${range.end}`;
+                      } else {
+                        label = `${amount}問`;
+                      }
                     } else {
                       label = `${amount}${subject.unit}`;
                     }
