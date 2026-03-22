@@ -156,7 +156,7 @@ export default function ScheduleCalendar({
                             }}
                             className="w-9 rounded-md border border-gray-200 bg-white px-0.5 py-1 text-[12px] text-center tabular-nums focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 focus:outline-none"
                           />
-                          <span className="text-[10px] text-gray-300">~</span>
+                          <span className="text-[12px] text-gray-700 font-medium">~</span>
                           <input
                             type="number"
                             min={0}
@@ -169,6 +169,9 @@ export default function ScheduleCalendar({
                           />
                           <span className="text-[9px] text-gray-400">番</span>
                         </div>
+                        {amount > 0 && (
+                          <div className="text-[9px] text-gray-400 leading-tight mt-0.5">({amount}問)</div>
+                        )}
                       </td>
                     );
                   }
