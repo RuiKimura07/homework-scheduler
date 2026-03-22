@@ -90,8 +90,8 @@ export default function PrintView({ result, studentName, editedAmounts, editedRa
                       const range = getRange(subject.id, dayIdx);
                       if (range.start > 0) {
                         label = range.start === range.end
-                          ? `No.${range.start}`
-                          : `No.${range.start}~${range.end}`;
+                          ? `${range.start}番`
+                          : `${range.start}~${range.end}番`;
                       } else {
                         label = `${amount}問`;
                       }
@@ -122,7 +122,7 @@ export default function PrintView({ result, studentName, editedAmounts, editedRa
               return (
                 <td key={subject.id} style={{ border: '1px solid #999', padding: '4px 6px', textAlign: 'center' }}>
                   {subject.inputMode === 'range'
-                    ? `No.${subject.rangeStart}~${subject.rangeEnd}`
+                    ? `${subject.rangeStart}~${subject.rangeEnd}番 (${total}問)`
                     : `${total}${subject.unit}`}
                 </td>
               );

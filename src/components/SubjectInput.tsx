@@ -297,7 +297,6 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
 
               {isRange ? (
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <span className="text-[11px] font-medium text-gray-400 shrink-0">No.</span>
                   <input
                     type="number"
                     min={1}
@@ -308,7 +307,7 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                       missingRange ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                     }`}
                   />
-                  <span className="text-gray-300 shrink-0">~</span>
+                  <span className="text-gray-700 font-medium shrink-0">~</span>
                   <input
                     type="number"
                     min={1}
@@ -319,8 +318,9 @@ export default function SubjectInput({ subjects, onChange, showErrors, subjectMa
                       missingRange ? 'border-red-300 bg-red-50/50' : 'border-gray-200'
                     }`}
                   />
+                  <span className="text-[11px] text-gray-400 shrink-0">番</span>
                   <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
-                    = {entry.rangeEnd && entry.rangeStart ? Math.max(0, entry.rangeEnd - entry.rangeStart + 1) : 0}問
+                    ({entry.rangeEnd && entry.rangeStart ? Math.max(0, entry.rangeEnd - entry.rangeStart + 1) : 0}問)
                   </span>
                 </div>
               ) : (
